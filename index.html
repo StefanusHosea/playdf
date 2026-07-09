@@ -275,28 +275,6 @@
             z-index: 10;
         }
 
-        #toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%) translateY(150px);
-            background: rgba(0,0,0,0.85);
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 30px;
-            font-size: 14px;
-            font-weight: 500;
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 10000;
-            pointer-events: none;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        #toast.show {
-            transform: translateX(-50%) translateY(0);
-        }
-        
-        #btn-copy { color: #555; }
-
         /* --- CLOCK --- */
         #clock-wrapper {
             height: 30px;
@@ -391,10 +369,8 @@
             </div>
             
             <div class="controls-row">
-                <button class="btn-circle" id="btn-copy" title="Copy OBS URL">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                </button>
-                <button class="btn-circle" id="btn-present" title="Present (Shortcut: Q or P)">▶</button>
+                <button class="btn-circle" id="btn-swap" title="Swap to Live (Shortcut: Q)">🕹️</button>
+                <button class="btn-circle" id="btn-present" title="Present (Shortcut: P)">▶</button>
                 <select class="page-selector" id="page-select" title="Go to Page"></select>
                 <button class="btn-circle" id="btn-blackout" title="Blackout (Shortcut: Z)"></button>
                 <button class="btn-circle" id="btn-blank" title="Blank (Shortcut: X)"></button>
@@ -411,7 +387,6 @@
         <img id="live-img" />
         <div id="live-overlay"></div>
     </div>
-    <div id="toast">Live URL Copied! Paste into OBS Browser Source.</div>
 
     <script>
         // Set worker source for PDF.js
@@ -428,7 +403,7 @@
         let isRendering = false;
         let pageNumPending = null;
         let liveWindow = null;
-        let overlayState = 'none'; // 'none', 'black', 'white'
+        let overlayState = 'none'; // 'none', 'black', 'white', 'green'
         let currentFileName = 'Live Presentation';
 
         // DOM Elements
@@ -445,13 +420,14 @@
         const nextLabel = document.getElementById('next-page-label');
         
         const pageSelect = document.getElementById('page-select');
+        const btnSwap = document.getElementById('btn-swap');
         const btnPresent = document.getElementById('btn-present');
         const btnBlackout = document.getElementById('btn-blackout');
         const btnBlank = document.getElementById('btn-blank');
 
         if (isLiveMode) {
             // ==========================================
-            // RECEIVER MODE (OBS / Popup)
+            // RECEIVER MODE (Popups & Chrome Projectors)
             // ==========================================
             document.body.style.background = 'transparent';
             document.getElementById('drop-zone-container').style.display = 'none';
@@ -518,6 +494,8 @@
             // ==========================================
             // BROADCASTER MODE (Main Program)
             // ==========================================
+
+            let isLocalLiveMode = false;
 
             // Handle incoming requests from Live windows
             bc.onmessage = (e) => {
@@ -790,6 +768,28 @@
                     setTimeout(() => {
                         const data = currentCanvas.toDataURL('image/png');
                         bc.postMessage({ type: 'render', data: data, fileName: currentFileName });
+                        
+                        // Local swap sync
+                        if (isLocalLiveMode) {
+                            const liveImg = document.getElementById('live-img');
+                            if (liveImg.src && liveImg.src !== window.location.href) {
+                                const clone = liveImg.cloneNode();
+                                clone.style.position = 'absolute';
+                                clone.style.top = '0';
+                                clone.style.left = '0';
+                                clone.style.zIndex = '5';
+                                clone.style.transition = 'opacity 0.5s ease';
+                                liveImg.parentElement.appendChild(clone);
+                                
+                                liveImg.src = data;
+                                void clone.offsetWidth; // trigger reflow
+                                
+                                clone.style.opacity = '0';
+                                setTimeout(() => clone.remove(), 500);
+                            } else {
+                                liveImg.src = data;
+                            }
+                        }
                     }, 50);
                 }
             }
@@ -810,11 +810,50 @@
 
             function applyOverlayState() {
                 bc.postMessage({ type: 'overlay', state: overlayState });
+                
+                // Local swap sync
+                const liveOverlay = document.getElementById('live-overlay');
+                if (overlayState === 'black') {
+                    liveOverlay.style.backgroundColor = '#000';
+                    liveOverlay.style.opacity = '1';
+                    liveOverlay.style.pointerEvents = 'auto';
+                } else if (overlayState === 'white') {
+                    liveOverlay.style.backgroundColor = '#fff';
+                    liveOverlay.style.opacity = '1';
+                    liveOverlay.style.pointerEvents = 'auto';
+                } else {
+                    liveOverlay.style.opacity = '0';
+                    liveOverlay.style.pointerEvents = 'none';
+                }
             }
 
             function toggleFullScreen() {
                 // Force OBS / Popup into full screen via broadcast
                 bc.postMessage({ type: 'command_fullscreen' });
+            }
+
+            function toggleLocalLive() {
+                isLocalLiveMode = !isLocalLiveMode;
+                const liveView = document.getElementById('live-view');
+                
+                if (isLocalLiveMode) {
+                    liveView.style.background = '#000'; // Make background solid black to hide presenter interface
+                    liveView.style.display = 'block';
+                    
+                    // Force an immediate sync of current image and overlay
+                    const localLiveImg = document.getElementById('live-img');
+                    localLiveImg.src = currentCanvas.toDataURL('image/png');
+                    applyOverlayState();
+                    
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(()=>{});
+                    }
+                } else {
+                    liveView.style.display = 'none';
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen().catch(()=>{});
+                    }
+                }
             }
 
             // --- 4. EVENT LISTENERS ---
@@ -828,15 +867,7 @@
                 e.target.blur(); // Remove focus to re-enable keyboard shortcuts instantly
             });
 
-            document.getElementById('btn-copy').addEventListener('click', () => {
-                const targetUrl = window.location.origin + window.location.pathname + '?mode=live';
-                navigator.clipboard.writeText(targetUrl).then(() => {
-                    const toast = document.getElementById('toast');
-                    toast.classList.add('show');
-                    setTimeout(() => toast.classList.remove('show'), 3000);
-                });
-            });
-
+            btnSwap.addEventListener('click', toggleLocalLive);
             btnPresent.addEventListener('click', openLiveWindow);
             btnBlackout.addEventListener('click', () => toggleOverlay('black'));
             btnBlank.addEventListener('click', () => toggleOverlay('white'));
@@ -864,7 +895,7 @@
                     goPrevPage();
                 }
                 // Present (Exclude on Popup)
-                else if (['q', 'Q', 'p', 'P'].includes(k) && !isPopup) {
+                else if (['p', 'P'].includes(k) && !isPopup) {
                     if (e.preventDefault) e.preventDefault();
                     openLiveWindow();
                 }
@@ -877,6 +908,11 @@
                 else if (['x', 'X'].includes(k)) {
                     if (e.preventDefault) e.preventDefault();
                     toggleOverlay('white');
+                }
+                // Swap to local Live
+                else if (['q', 'Q'].includes(k)) {
+                    if (e.preventDefault) e.preventDefault();
+                    toggleLocalLive();
                 }
                 // Fullscreen Popup
                 else if (['f', 'F'].includes(k)) {
@@ -893,6 +929,13 @@
 
             // Apply to main window
             document.addEventListener('keydown', (e) => handleKeydown(e, false));
+            
+            // Listen for native exit from full screen
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement && isLocalLiveMode) {
+                    toggleLocalLive();
+                }
+            });
         
         } // End of ELSE (Broadcaster block)
     </script>
