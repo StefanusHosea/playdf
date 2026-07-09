@@ -253,6 +253,50 @@
         }
         #btn-blank.active { box-shadow: 0 0 0 4px #fff; border-color: #eee; }
 
+        /* --- LIVE VIEW (OBS/Receiver) --- */
+        #live-view {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: transparent;
+            z-index: 9999;
+        }
+        #live-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        #live-overlay {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease, background-color 0.5s ease;
+            z-index: 10;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(150px);
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10000;
+            pointer-events: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        #btn-copy { color: #555; }
+
         /* --- CLOCK --- */
         #clock-wrapper {
             height: 30px;
@@ -347,6 +391,9 @@
             </div>
             
             <div class="controls-row">
+                <button class="btn-circle" id="btn-copy" title="Copy OBS URL">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                </button>
                 <button class="btn-circle" id="btn-present" title="Present (Shortcut: Q or P)">▶</button>
                 <select class="page-selector" id="page-select" title="Go to Page"></select>
                 <button class="btn-circle" id="btn-blackout" title="Blackout (Shortcut: Z)"></button>
@@ -356,12 +403,24 @@
     </div>
 
     <footer>
-        Codecrafted by&nbsp;<a href="https://stefanus.hosea.id" target="_blank">Stefanus Hosea</a>&nbsp;• v2026.07.09.024
+        Codecrafted by&nbsp;<a href="https://stefanus.hosea.id" target="_blank">Stefanus Hosea</a>&nbsp;• v2026.07.09.001
     </footer>
+
+    <!-- STATE 3: Live View (OBS/Receiver) -->
+    <div id="live-view">
+        <img id="live-img" />
+        <div id="live-overlay"></div>
+    </div>
+    <div id="toast">Live URL Copied! Paste into OBS Browser Source.</div>
 
     <script>
         // Set worker source for PDF.js
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Check Mode (Broadcaster vs Receiver)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isLiveMode = urlParams.get('mode') === 'live';
+        const bc = new BroadcastChannel('playdf_channel');
 
         // Core variables
         let pdfDoc = null;
@@ -390,313 +449,235 @@
         const btnBlackout = document.getElementById('btn-blackout');
         const btnBlank = document.getElementById('btn-blank');
 
-        // --- CLOCK LOGIC ---
-        let lastTimeStr = "";
-        
-        function updateClock() {
-            const now = new Date();
-            // Forces exactly 8 characters format (e.g. "09:05:02")
-            const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            
-            if (timeStr !== lastTimeStr) {
-                const wrapper = document.getElementById('clock-wrapper');
-                
-                if (wrapper.children.length === 0) {
-                    // Initial render: create a separate span for each character
-                    for(let char of timeStr) {
-                        let span = document.createElement('span');
-                        span.textContent = char;
-                        wrapper.appendChild(span);
+        if (isLiveMode) {
+            // ==========================================
+            // RECEIVER MODE (OBS / Popup)
+            // ==========================================
+            document.body.style.background = 'transparent';
+            document.getElementById('drop-zone-container').style.display = 'none';
+            document.getElementById('presenter-view').style.display = 'none';
+            document.querySelector('footer').style.display = 'none';
+            document.getElementById('live-view').style.display = 'block';
+
+            const liveImg = document.getElementById('live-img');
+            const liveOverlay = document.getElementById('live-overlay');
+
+            bc.onmessage = (e) => {
+                const msg = e.data;
+                if (msg.type === 'render') {
+                    if (liveImg.src && liveImg.src !== window.location.href) {
+                        const clone = liveImg.cloneNode();
+                        clone.style.position = 'absolute';
+                        clone.style.top = '0';
+                        clone.style.left = '0';
+                        clone.style.zIndex = '5';
+                        clone.style.transition = 'opacity 0.5s ease';
+                        liveImg.parentElement.appendChild(clone);
+                        
+                        liveImg.src = msg.data;
+                        void clone.offsetWidth; // trigger reflow
+                        
+                        clone.style.opacity = '0';
+                        setTimeout(() => clone.remove(), 500);
+                    } else {
+                        liveImg.src = msg.data;
                     }
-                } else {
-                    // Update only the specific characters that changed to prevent static text from flickering
-                    for(let i = 0; i < timeStr.length; i++) {
-                        if (wrapper.children[i].textContent !== timeStr[i]) {
-                            const span = wrapper.children[i];
-                            span.style.animation = 'none';
-                            span.textContent = timeStr[i];
-                            
-                            // Trigger reflow to restart animation seamlessly
-                            void span.offsetWidth; 
-                            
-                            span.style.animation = 'digitFade 0.4s ease-out forwards';
-                        }
+                    if (msg.fileName) document.title = msg.fileName;
+                } else if (msg.type === 'overlay') {
+                    if (msg.state === 'black') {
+                        liveOverlay.style.backgroundColor = '#000';
+                        liveOverlay.style.opacity = '1';
+                        liveOverlay.style.pointerEvents = 'auto';
+                    } else if (msg.state === 'white') {
+                        liveOverlay.style.backgroundColor = '#fff';
+                        liveOverlay.style.opacity = '1';
+                        liveOverlay.style.pointerEvents = 'auto';
+                    } else {
+                        liveOverlay.style.opacity = '0';
+                        liveOverlay.style.pointerEvents = 'none';
+                    }
+                } else if (msg.type === 'command_close') {
+                    window.close();
+                } else if (msg.type === 'command_fullscreen') {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(()=>{});
+                    } else {
+                        document.exitFullscreen().catch(()=>{});
                     }
                 }
-                lastTimeStr = timeStr;
-            }
-        }
-        setInterval(updateClock, 1000);
-        updateClock(); // Initial call
-
-        // --- 1. INITIALIZATION & FILE HANDLING ---
-
-        // Click to browse
-        dropZone.addEventListener('click', () => fileInput.click());
-
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if(file && file.type === "application/pdf") {
-                loadPDFFile(file);
-            }
-        });
-
-        // Drag & Drop
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if(file && file.type === "application/pdf") {
-                loadPDFFile(file);
-            } else {
-                alert("Please drop a valid PDF file.");
-            }
-        });
-
-        // Read file and parse with PDF.js
-        function loadPDFFile(file) {
-            currentFileName = file.name;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const typedarray = new Uint8Array(e.target.result);
-                
-                // Fade out transition for seamless state change
-                dropZoneContainer.style.transition = 'opacity 0.4s ease';
-                dropZoneContainer.style.opacity = '0';
-                
-                setTimeout(() => {
-                    // Switch UI State
-                    dropZoneContainer.style.display = 'none';
-                    presenterView.style.opacity = '0';
-                    presenterView.style.display = 'flex';
-                    
-                    // Force reflow
-                    void presenterView.offsetWidth;
-                    presenterView.style.transition = 'opacity 0.4s ease';
-                    presenterView.style.opacity = '1';
-                    
-                    pdfjsLib.getDocument(typedarray).promise.then(pdf => {
-                        pdfDoc = pdf;
-                        pageNum = 1;
-                        
-                        // Setup Dropdown
-                        pageSelect.innerHTML = '';
-                        for(let i = 1; i <= pdfDoc.numPages; i++) {
-                            const opt = document.createElement('option');
-                            opt.value = i;
-                            opt.textContent = `Page ${i}`;
-                            pageSelect.appendChild(opt);
-                        }
-                        
-                        // Initial Render
-                        queueRenderPage(pageNum);
-                    }).catch(err => {
-                        alert("Error loading PDF: " + err.message);
-                        resetUI();
-                    });
-                }, 400);
             };
-            reader.readAsArrayBuffer(file);
-        }
 
-        function resetUI() {
-            presenterView.style.transition = 'opacity 0.4s ease';
-            presenterView.style.opacity = '0';
-            setTimeout(() => {
-                presenterView.style.display = 'none';
-                dropZoneContainer.style.display = 'flex';
-                void dropZoneContainer.offsetWidth;
-                dropZoneContainer.style.opacity = '1';
-                pdfDoc = null;
-            }, 400);
-        }
+            // Request state on initial load
+            bc.postMessage({ type: 'request_state' });
 
+            // Forward interactions back to broadcaster
+            document.addEventListener('click', () => bc.postMessage({ type: 'input_click' }));
+            document.addEventListener('keydown', (e) => bc.postMessage({ type: 'input_keydown', key: e.key }));
 
-        // --- 2. RENDER LOGIC ---
+        } else {
+            // ==========================================
+            // BROADCASTER MODE (Main Program)
+            // ==========================================
 
-        function renderPageCanvas(num, canvasElement, isMain = false) {
-            // Snapshot current canvas for smooth crossfade transition
-            let clone = null;
-            if (canvasElement.width > 0 && canvasElement.height > 0) {
-                clone = document.createElement('canvas');
-                clone.width = canvasElement.width;
-                clone.height = canvasElement.height;
-                const cloneCtx = clone.getContext('2d');
-                cloneCtx.drawImage(canvasElement, 0, 0);
-                
-                clone.style.position = 'absolute';
-                clone.style.top = '0';
-                clone.style.left = '0';
-                clone.style.width = '100%';
-                clone.style.height = '100%';
-                clone.style.objectFit = 'contain';
-                clone.style.transition = 'opacity 0.5s ease';
-                clone.style.pointerEvents = 'none';
-                clone.style.zIndex = '5';
-                
-                canvasElement.parentElement.appendChild(clone);
-            }
-
-            return pdfDoc.getPage(num).then(page => {
-                // High-res render scale for crispness, CSS scales it down
-                const scale = 2.5; 
-                const viewport = page.getViewport({scale: scale});
-                
-                canvasElement.height = viewport.height;
-                canvasElement.width = viewport.width;
-                
-                const ctx = canvasElement.getContext('2d');
-                const renderContext = {
-                    canvasContext: ctx,
-                    viewport: viewport
-                };
-                
-                return page.render(renderContext).promise.then(() => {
-                    // Fade out the snapshot after new render is complete
-                    if (clone) {
-                        requestAnimationFrame(() => {
-                            clone.style.opacity = '0';
-                            setTimeout(() => {
-                                if (clone.parentNode) clone.parentNode.removeChild(clone);
-                            }, 500);
+            // Handle incoming requests from Live windows
+            bc.onmessage = (e) => {
+                const msg = e.data;
+                if (msg.type === 'request_state') {
+                    if (currentCanvas.width > 0) {
+                        bc.postMessage({ 
+                            type: 'render', 
+                            data: currentCanvas.toDataURL('image/png'),
+                            fileName: currentFileName
                         });
                     }
-                });
-            });
-        }
+                    bc.postMessage({ type: 'overlay', state: overlayState });
+                } else if (msg.type === 'input_click') {
+                    goNextPage();
+                } else if (msg.type === 'input_keydown') {
+                    handleKeydown({ key: msg.key, preventDefault: () => {} }, true);
+                }
+            };
 
-        function renderPage(num) {
-            isRendering = true;
+            // --- CLOCK LOGIC ---
+            let lastTimeStr = "";
             
-            // Render Current Page
-            renderPageCanvas(num, currentCanvas, true).then(() => {
-                currentLabel.style.display = 'none'; // Hide text placeholder
-                syncLiveWindow(); // Update popup window
+            function updateClock() {
+                const now = new Date();
+                // Forces exactly 8 characters format (e.g. "09:05:02")
+                const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 
-                // Render Next Page (if exists)
-                if (num < pdfDoc.numPages) {
-                    renderPageCanvas(num + 1, nextCanvas).then(() => {
-                        nextLabel.style.display = 'none';
-                        finishRender();
-                    });
-                } else {
-                    // Clear next page canvas if we are at the end
-                    const ctx = nextCanvas.getContext('2d');
-                    ctx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-                    nextLabel.textContent = "End of Document";
-                    nextLabel.style.display = 'block';
-                    finishRender();
+                if (timeStr !== lastTimeStr) {
+                    const wrapper = document.getElementById('clock-wrapper');
+                    
+                    if (wrapper.children.length === 0) {
+                        // Initial render: create a separate span for each character
+                        for(let char of timeStr) {
+                            let span = document.createElement('span');
+                            span.textContent = char;
+                            wrapper.appendChild(span);
+                        }
+                    } else {
+                        // Update only the specific characters that changed to prevent static text from flickering
+                        for(let i = 0; i < timeStr.length; i++) {
+                            if (wrapper.children[i].textContent !== timeStr[i]) {
+                                const span = wrapper.children[i];
+                                span.style.animation = 'none';
+                                span.textContent = timeStr[i];
+                                
+                                // Trigger reflow to restart animation seamlessly
+                                void span.offsetWidth; 
+                                
+                                span.style.animation = 'digitFade 0.4s ease-out forwards';
+                            }
+                        }
+                    }
+                    lastTimeStr = timeStr;
+                }
+            }
+            setInterval(updateClock, 1000);
+            updateClock(); // Initial call
+
+            // --- 1. INITIALIZATION & FILE HANDLING ---
+
+            // Click to browse
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if(file && file.type === "application/pdf") {
+                    loadPDFFile(file);
                 }
             });
-            
-            // Update dropdown
-            pageSelect.value = num;
-        }
 
-        function finishRender() {
-            isRendering = false;
-            if (pageNumPending !== null) {
-                renderPage(pageNumPending);
-                pageNumPending = null;
+            // Drag & Drop
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if(file && file.type === "application/pdf") {
+                    loadPDFFile(file);
+                } else {
+                    alert("Please drop a valid PDF file.");
+                }
+            });
+
+            // Read file and parse with PDF.js
+            function loadPDFFile(file) {
+                currentFileName = file.name;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const typedarray = new Uint8Array(e.target.result);
+                    
+                    // Fade out transition for seamless state change
+                    dropZoneContainer.style.transition = 'opacity 0.4s ease';
+                    dropZoneContainer.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        // Switch UI State
+                        dropZoneContainer.style.display = 'none';
+                        presenterView.style.opacity = '0';
+                        presenterView.style.display = 'flex';
+                        
+                        // Force reflow
+                        void presenterView.offsetWidth;
+                        presenterView.style.transition = 'opacity 0.4s ease';
+                        presenterView.style.opacity = '1';
+                        
+                        pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                            pdfDoc = pdf;
+                            pageNum = 1;
+                            
+                            // Setup Dropdown
+                            pageSelect.innerHTML = '';
+                            for(let i = 1; i <= pdfDoc.numPages; i++) {
+                                const opt = document.createElement('option');
+                                opt.value = i;
+                                opt.textContent = `Page ${i}`;
+                                pageSelect.appendChild(opt);
+                            }
+                            
+                            // Initial Render
+                            queueRenderPage(pageNum);
+                        }).catch(err => {
+                            alert("Error loading PDF: " + err.message);
+                            resetUI();
+                        });
+                    }, 400);
+                };
+                reader.readAsArrayBuffer(file);
             }
-        }
 
-        function queueRenderPage(num) {
-            if (isRendering) {
-                pageNumPending = num;
-            } else {
-                renderPage(num);
+            function resetUI() {
+                presenterView.style.transition = 'opacity 0.4s ease';
+                presenterView.style.opacity = '0';
+                setTimeout(() => {
+                    presenterView.style.display = 'none';
+                    dropZoneContainer.style.display = 'flex';
+                    void dropZoneContainer.offsetWidth;
+                    dropZoneContainer.style.opacity = '1';
+                    pdfDoc = null;
+                }, 400);
             }
-        }
 
-        function goNextPage() {
-            if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
-            pageNum++;
-            queueRenderPage(pageNum);
-        }
 
-        function goPrevPage() {
-            if (!pdfDoc || pageNum <= 1) return;
-            pageNum--;
-            queueRenderPage(pageNum);
-        }
+            // --- 2. RENDER LOGIC ---
 
-        // --- 3. LIVE POPUP LOGIC ---
-
-        function openLiveWindow() {
-            if (liveWindow && !liveWindow.closed) {
-                liveWindow.focus();
-                return;
-            }
-            
-            // Open window with attributes to look as clean as possible
-            const features = 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no,resizable=yes';
-            liveWindow = window.open('', 'PlayDF_Live', features);
-            
-            if(!liveWindow) {
-                alert("Popup blocked! Please allow popups for this site to use the Presenter view.");
-                return;
-            }
-            
-            // Write popup HTML structure
-            liveWindow.document.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>${currentFileName}</title>
-                    <style>
-                        html, body { background: transparent; }
-                        body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; position: relative; }
-                        canvas { width: 100%; height: 100%; object-fit: contain; }
-                        #overlay { 
-                            position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
-                            opacity: 0; pointer-events: none; z-index: 10;
-                            transition: opacity 0.5s ease, background-color 0.5s ease;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <canvas id="live-canvas"></canvas>
-                    <div id="overlay"></div>
-                </body>
-                </html>
-            `);
-            liveWindow.document.close();
-            
-            // Set title safely in case of special characters
-            liveWindow.document.title = currentFileName;
-
-            // Attach event listeners to the popup window
-            liveWindow.document.addEventListener('click', goNextPage);
-            liveWindow.document.addEventListener('keydown', (e) => handleKeydown(e, true));
-            
-            // Small delay to ensure DOM in popup is ready before painting
-            setTimeout(() => {
-                syncLiveWindow();
-                applyOverlayState();
-            }, 100);
-        }
-
-        function syncLiveWindow() {
-            if (!liveWindow || liveWindow.closed) return;
-            
-            const liveCanvas = liveWindow.document.getElementById('live-canvas');
-            if (liveCanvas && currentCanvas.width > 0) {
-                // Snapshot live canvas for seamless transition
+            function renderPageCanvas(num, canvasElement, isMain = false) {
+                // Snapshot current canvas for smooth crossfade transition
                 let clone = null;
-                if (liveCanvas.width > 0 && liveCanvas.height > 0) {
-                    clone = liveWindow.document.createElement('canvas');
-                    clone.width = liveCanvas.width;
-                    clone.height = liveCanvas.height;
+                if (canvasElement.width > 0 && canvasElement.height > 0) {
+                    clone = document.createElement('canvas');
+                    clone.width = canvasElement.width;
+                    clone.height = canvasElement.height;
                     const cloneCtx = clone.getContext('2d');
-                    cloneCtx.drawImage(liveCanvas, 0, 0);
+                    cloneCtx.drawImage(canvasElement, 0, 0);
                     
                     clone.style.position = 'absolute';
                     clone.style.top = '0';
@@ -708,146 +689,212 @@
                     clone.style.pointerEvents = 'none';
                     clone.style.zIndex = '5';
                     
-                    liveCanvas.parentElement.appendChild(clone);
+                    canvasElement.parentElement.appendChild(clone);
                 }
 
-                liveCanvas.width = currentCanvas.width;
-                liveCanvas.height = currentCanvas.height;
-                const ctx = liveCanvas.getContext('2d');
-                ctx.drawImage(currentCanvas, 0, 0);
-                
-                // Trigger fade out
-                if (clone) {
-                    // Force a browser reflow so the initial CSS state is registered before fading
-                    void clone.offsetWidth; 
+                return pdfDoc.getPage(num).then(page => {
+                    // High-res render scale for crispness, CSS scales it down
+                    const scale = 2.5; 
+                    const viewport = page.getViewport({scale: scale});
                     
-                    clone.style.opacity = '0';
-                    setTimeout(() => {
-                        if (clone.parentNode) clone.parentNode.removeChild(clone);
-                    }, 500);
-                }
-            }
-        }
-
-        function toggleOverlay(type) {
-            if (overlayState === type) {
-                overlayState = 'none'; // Toggle off
-            } else {
-                overlayState = type; // Set to black or white
-            }
-            
-            // Update button visual states
-            btnBlackout.classList.toggle('active', overlayState === 'black');
-            btnBlank.classList.toggle('active', overlayState === 'white');
-            
-            applyOverlayState();
-        }
-
-        function applyOverlayState() {
-            if (!liveWindow || liveWindow.closed) return;
-            const overlay = liveWindow.document.getElementById('overlay');
-            if (!overlay) return;
-            
-            if (overlayState === 'black') {
-                overlay.style.backgroundColor = '#000';
-                overlay.style.opacity = '1';
-                overlay.style.pointerEvents = 'auto';
-            } else if (overlayState === 'white') {
-                overlay.style.backgroundColor = '#fff';
-                overlay.style.opacity = '1';
-                overlay.style.pointerEvents = 'auto';
-            } else {
-                overlay.style.opacity = '0';
-                overlay.style.pointerEvents = 'none';
-            }
-        }
-
-        function toggleFullScreen() {
-            if (!liveWindow || liveWindow.closed) return;
-            const doc = liveWindow.document;
-            if (!doc.fullscreenElement) {
-                doc.documentElement.requestFullscreen().catch(err => {
-                    console.warn(`Error attempting to enable full-screen mode: ${err.message}`);
+                    canvasElement.height = viewport.height;
+                    canvasElement.width = viewport.width;
+                    
+                    const ctx = canvasElement.getContext('2d');
+                    const renderContext = {
+                        canvasContext: ctx,
+                        viewport: viewport
+                    };
+                    
+                    return page.render(renderContext).promise.then(() => {
+                        // Fade out the snapshot after new render is complete
+                        if (clone) {
+                            requestAnimationFrame(() => {
+                                clone.style.opacity = '0';
+                                setTimeout(() => {
+                                    if (clone.parentNode) clone.parentNode.removeChild(clone);
+                                }, 500);
+                            });
+                        }
+                    });
                 });
-            } else {
-                if (doc.exitFullscreen) {
-                    doc.exitFullscreen();
+            }
+
+            function renderPage(num) {
+                isRendering = true;
+                
+                // Render Current Page
+                renderPageCanvas(num, currentCanvas, true).then(() => {
+                    currentLabel.style.display = 'none'; // Hide text placeholder
+                    syncLiveWindow(); // Broadcast to live windows
+                    
+                    // Render Next Page (if exists)
+                    if (num < pdfDoc.numPages) {
+                        renderPageCanvas(num + 1, nextCanvas).then(() => {
+                            nextLabel.style.display = 'none';
+                            finishRender();
+                        });
+                    } else {
+                        // Clear next page canvas if we are at the end
+                        const ctx = nextCanvas.getContext('2d');
+                        ctx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+                        nextLabel.textContent = "End of Document";
+                        nextLabel.style.display = 'block';
+                        finishRender();
+                    }
+                });
+                
+                // Update dropdown
+                pageSelect.value = num;
+            }
+
+            function finishRender() {
+                isRendering = false;
+                if (pageNumPending !== null) {
+                    renderPage(pageNumPending);
+                    pageNumPending = null;
                 }
             }
-        }
 
-        // --- 4. EVENT LISTENERS ---
+            function queueRenderPage(num) {
+                if (isRendering) {
+                    pageNumPending = num;
+                } else {
+                    renderPage(num);
+                }
+            }
 
-        // UI Clicks
-        nextContainer.addEventListener('click', goNextPage);
+            function goNextPage() {
+                if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
+                pageNum++;
+                queueRenderPage(pageNum);
+            }
+
+            function goPrevPage() {
+                if (!pdfDoc || pageNum <= 1) return;
+                pageNum--;
+                queueRenderPage(pageNum);
+            }
+
+            // --- 3. LIVE POPUP & IPC LOGIC ---
+
+            function openLiveWindow() {
+                const targetUrl = window.location.origin + window.location.pathname + '?mode=live';
+                // standard window.open falls back gracefully to a synced broadcast window
+                liveWindow = window.open(targetUrl, 'PlayDF_Live', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
+            }
+
+            function syncLiveWindow() {
+                if (currentCanvas.width > 0) {
+                    // Delay slightly to prevent blocking UI animations
+                    setTimeout(() => {
+                        const data = currentCanvas.toDataURL('image/png');
+                        bc.postMessage({ type: 'render', data: data, fileName: currentFileName });
+                    }, 50);
+                }
+            }
+
+            function toggleOverlay(type) {
+                if (overlayState === type) {
+                    overlayState = 'none'; // Toggle off
+                } else {
+                    overlayState = type; // Set to black or white
+                }
+                
+                // Update button visual states
+                btnBlackout.classList.toggle('active', overlayState === 'black');
+                btnBlank.classList.toggle('active', overlayState === 'white');
+                
+                applyOverlayState();
+            }
+
+            function applyOverlayState() {
+                bc.postMessage({ type: 'overlay', state: overlayState });
+            }
+
+            function toggleFullScreen() {
+                // Force OBS / Popup into full screen via broadcast
+                bc.postMessage({ type: 'command_fullscreen' });
+            }
+
+            // --- 4. EVENT LISTENERS ---
+
+            // UI Clicks
+            nextContainer.addEventListener('click', goNextPage);
+            
+            pageSelect.addEventListener('change', (e) => {
+                pageNum = parseInt(e.target.value);
+                queueRenderPage(pageNum);
+                e.target.blur(); // Remove focus to re-enable keyboard shortcuts instantly
+            });
+
+            document.getElementById('btn-copy').addEventListener('click', () => {
+                const targetUrl = window.location.origin + window.location.pathname + '?mode=live';
+                navigator.clipboard.writeText(targetUrl).then(() => {
+                    const toast = document.getElementById('toast');
+                    toast.classList.add('show');
+                    setTimeout(() => toast.classList.remove('show'), 3000);
+                });
+            });
+
+            btnPresent.addEventListener('click', openLiveWindow);
+            btnBlackout.addEventListener('click', () => toggleOverlay('black'));
+            btnBlank.addEventListener('click', () => toggleOverlay('white'));
+
+            // Keyboard Shortcuts Handler
+            function handleKeydown(e, isPopup = false) {
+                // Ignore if in input/textarea (not applicable here, but good practice)
+                if(e && e.target && e.target.tagName) {
+                    if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+                }
+                
+                // Only capture if PDF is loaded
+                if (!pdfDoc) return;
+
+                const k = e.key;
+                
+                // Next Page
+                if (['a', 'A', ' ', 'ArrowDown', 'ArrowRight'].includes(k)) {
+                    if (e.preventDefault) e.preventDefault();
+                    goNextPage();
+                } 
+                // Prev Page
+                else if (['ArrowUp', 'ArrowLeft'].includes(k)) {
+                    if (e.preventDefault) e.preventDefault();
+                    goPrevPage();
+                }
+                // Present (Exclude on Popup)
+                else if (['q', 'Q', 'p', 'P'].includes(k) && !isPopup) {
+                    if (e.preventDefault) e.preventDefault();
+                    openLiveWindow();
+                }
+                // Blackout
+                else if (['z', 'Z'].includes(k)) {
+                    if (e.preventDefault) e.preventDefault();
+                    toggleOverlay('black');
+                }
+                // Blank
+                else if (['x', 'X'].includes(k)) {
+                    if (e.preventDefault) e.preventDefault();
+                    toggleOverlay('white');
+                }
+                // Fullscreen Popup
+                else if (['f', 'F'].includes(k)) {
+                    if (e.preventDefault) e.preventDefault();
+                    toggleFullScreen();
+                }
+                // Refresh and Reset
+                else if (['r', 'R'].includes(k)) {
+                    if (e.preventDefault) e.preventDefault();
+                    bc.postMessage({ type: 'command_close' });
+                    window.location.reload(); 
+                }
+            }
+
+            // Apply to main window
+            document.addEventListener('keydown', (e) => handleKeydown(e, false));
         
-        pageSelect.addEventListener('change', (e) => {
-            pageNum = parseInt(e.target.value);
-            queueRenderPage(pageNum);
-            e.target.blur(); // Remove focus to re-enable keyboard shortcuts instantly
-        });
-
-        btnPresent.addEventListener('click', openLiveWindow);
-        btnBlackout.addEventListener('click', () => toggleOverlay('black'));
-        btnBlank.addEventListener('click', () => toggleOverlay('white'));
-
-        // Keyboard Shortcuts Handler
-        function handleKeydown(e, isPopup = false) {
-            // Ignore if in input/textarea (not applicable here, but good practice)
-            if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
-                 // only ignore if it's not the page select we want to use keys for, 
-                 // but safely we can let standard HTML behavior run for SELECT
-                 return; 
-            }
-            
-            // Only capture if PDF is loaded
-            if (!pdfDoc) return;
-
-            const k = e.key;
-            
-            // Next Page
-            if (['a', 'A', ' ', 'ArrowDown', 'ArrowRight'].includes(k)) {
-                e.preventDefault(); // prevent spacebar scrolling
-                goNextPage();
-            } 
-            // Prev Page
-            else if (['ArrowUp', 'ArrowLeft'].includes(k)) {
-                e.preventDefault();
-                goPrevPage();
-            }
-            // Present (Exclude on Popup)
-            else if (['q', 'Q', 'p', 'P'].includes(k) && !isPopup) {
-                e.preventDefault();
-                openLiveWindow();
-            }
-            // Blackout
-            else if (['z', 'Z'].includes(k)) {
-                e.preventDefault();
-                toggleOverlay('black');
-            }
-            // Blank
-            else if (['x', 'X'].includes(k)) {
-                e.preventDefault();
-                toggleOverlay('white');
-            }
-            // Fullscreen Popup
-            else if (['f', 'F'].includes(k)) {
-                e.preventDefault();
-                toggleFullScreen();
-            }
-            // Refresh and Reset
-            else if (['r', 'R'].includes(k)) {
-                e.preventDefault();
-                if (liveWindow && !liveWindow.closed) {
-                    liveWindow.close();
-                }
-                window.location.reload(); // Hard refresh back to initial state
-            }
-        }
-
-        // Apply to main window
-        document.addEventListener('keydown', (e) => handleKeydown(e, false));
-
+        } // End of ELSE (Broadcaster block)
     </script>
 </body>
 </html>
