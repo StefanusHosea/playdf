@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<!---
+   
+   PlayDF • A dead simple PDF presenter.
+   Initial: v09.07.2026
+   Codecrafted by hello@stefanushosea.com
+
+--->
+<html dev="stefanus@hosea.id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PlayDF</title>
+    <meta property="og:title" content="PlayDF"/>
+    <meta name='description' content="A dead simple PDF presenter • Codecrafted by stefanus@hosea.id">
+    <meta property="og:description" content="A dead simple PDF presenter • Codecrafted by stefanus@hosea.id">
+    <meta property="og:type" content="website"/>
+    <meta property="og:url" content="https://playdf.hosea.id"/>
+    <meta property="og:image" content="https://playdf.hosea.id/share.jpg"/>
+    <meta property="og:image:type" content="image/jpeg"/>
+    <meta property="og:image:width" content="1200"/>
+    <meta property="og:image:height" content="630"/>
+    <meta name="author" content="Stefanus Hosea"/>
+    <meta name="keywords" content="PDF, presenter, presentation"/>
+    <meta property="og:type" content="website"/>
+    <meta property="og:site_name" content="PlayDF"/>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="PlayDF">
+    <meta name="application-name" content="PlayDF">
+    <link rel="apple-touch-icon" href="https://playdf.hosea.id/apple-touch-icon.png"/>
+    <meta name="theme-color" content="#242424"/>
+    <meta name="msapplication-navbutton-color" content="#242424"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="#242424"/>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Host Grotesk', sans-serif;
+            background-color: #ccc;
+            background-image: linear-gradient(transparent, #eee);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: #242424;
+        }
+
+        /* --- INITIAL STATE: Drop Zone --- */
+        #drop-zone-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        @keyframes dropZoneFade {
+            0%, 100% { opacity: 0.8; transform: scale(0.995); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes textGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 300% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        #drop-zone {
+            width: 100%;
+            height: 100%;
+            border: 3px dashed rgba(0,0,0,.15);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            animation: dropZoneFade 3s infinite ease-in-out;
+        }
+        
+        #drop-zone:hover {
+            background-color: rgba(255,255,255,.075);
+            border-color: rgba(0,0,0,.25);
+            transform: scale(1.01);
+            animation-play-state: paused; /* Pause fade on hover */
+            opacity: 1;
+        }
+
+        #drop-zone.dragover {
+            background-color: rgba(255,255,255,.1);
+            border-color: rgba(0,0,0,.25);
+            transform: scale(1.025);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+            animation: none; /* Stop fade entirely when dragging */
+            opacity: 1;
+        }
+
+        h1, h2 {
+            background: linear-gradient(270deg, #aaa, #bbb, #aaa);
+            background-size: 200% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+            animation: textGradient 5s ease infinite;
+            margin: 0;
+        }
+
+        h1{
+            font-size: 26px;
+            font-weight: 500;
+        }
+        h2{
+            font-size: 20px;
+            font-weight: 400;
+        }
+
+        /* --- PRESENTER VIEW --- */
+        #presenter-view {
+            flex-grow: 1;
+            display: none; /* Hidden initially */
+            padding: 40px;
+            gap: 40px;
+            height: calc(100vh - 60px); /* Leave room for footer */
+        }
+        
+        .col-left {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            border-radius: 12px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .col-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .preview-container {
+            width: 100%;
+            background: #000;
+            border-radius: 12px;
+            aspect-ratio: 16 / 9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        
+        .preview-container:hover {
+            transform: scale(1.02);
+        }
+
+        .preview-container::after {
+            content: "Next Page";
+            position: absolute;
+            bottom: 10px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .preview-container:hover::after {
+            opacity: 1;
+        }
+
+        /* Canvas styling to fit containers neatly */
+        canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Keep aspect ratio intact without cropping */
+        }
+
+        /* Labels over black boxes for initial render visual */
+        .overlay-label {
+            position: absolute;
+            color: white;
+            font-size: 32px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #next-page-label { font-size: 24px; }
+
+        /* --- CONTROLS --- */
+        .controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: end;
+            gap: 12px;
+            background: transparent;
+            padding: 10px 0;
+        }
+
+        .btn-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            background: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn-circle:hover { transform: scale(1.05); }
+        .btn-circle:active { transform: scale(0.95); }
+        
+        #btn-present {
+            color: #aaa;
+        }
+        #btn-blackout {
+            background: #222;
+            color: #222;
+            border: 2px solid rgba(0,0,0,.1);
+        }
+        #btn-blackout.active { box-shadow: 0 0 0 4px #000; }
+        
+        #btn-blank {
+            background: #fff;
+            color: #fff;
+            border: 2px solid rgba(0,0,0,.1);
+        }
+        #btn-blank.active { box-shadow: 0 0 0 4px #fff; border-color: #eee; }
+
+        /* --- CLOCK --- */
+        #clock-wrapper {
+            height: 24px;
+            width: 100%;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            font-weight: 300;
+            font-size: 18px;
+            color: #888;
+            margin-bottom: -10px; /* Pull closer to the preview block */
+        }
+        
+        #clock-wrapper span {
+            display: inline-block;
+        }
+
+        @keyframes digitFade {
+            0% { opacity: 0.1; }
+            100% { opacity: 1; }
+        }
+
+        .page-selector {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: none;
+            font-family: inherit;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            outline: none;
+            cursor: pointer;
+            min-width: 100px;
+            text-align: center;
+            appearance: none;
+            background: #fff url('data:image/svg+xml;utf8,<svg width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="M1 3l4 4 4-4" stroke="black" fill="none" stroke-width="2" stroke-linecap="round"/></svg>') no-repeat right 12px center;
+            padding-right: 30px;
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 20px;
+            font-size: 11px;
+            color: #484848;
+            background: transparent;
+            opacity: .5;
+            transition: opacity .5s ease;
+        }
+        footer:hover{
+            opacity: 1;
+        }
+        footer a {
+            color: #242424;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color .5s ease;
+        }
+        footer a:hover {
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- STATE 1: Drop Zone -->
+    <div id="drop-zone-container">
+        <div id="drop-zone">
+            <h1>Drop a PDF File</h1>
+            <h2>or click to browse</h2>
+        </div>
+        <input type="file" id="file-input" style="display:none" accept="application/pdf">
+    </div>
+
+    <!-- STATE 2: Presenter View -->
+    <div id="presenter-view">
+        <div class="col-left">
+            <span class="overlay-label" id="current-page-label">Page 1</span>
+            <canvas id="current-canvas"></canvas>
+        </div>
+        
+        <div class="col-right">
+            <div id="clock-wrapper"></div>
+            <div class="preview-container" id="next-page-container">
+                <span class="overlay-label" id="next-page-label">Page 2</span>
+                <canvas id="next-canvas"></canvas>
+            </div>
+            
+            <div class="controls-row">
+                <button class="btn-circle" id="btn-present" title="Present (Shortcut: Q or P)">▶</button>
+                <select class="page-selector" id="page-select" title="Go to Page"></select>
+                <button class="btn-circle" id="btn-blackout" title="Blackout (Shortcut: Z)"></button>
+                <button class="btn-circle" id="btn-blank" title="Blank (Shortcut: X)"></button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        Codecrafted by&nbsp;<a href="https://stefanus.hosea.id" target="_blank">Stefanus Hosea</a>&nbsp;• v2026.07.09.001
+    </footer>
+
+    <script>
+        // Set worker source for PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Core variables
+        let pdfDoc = null;
+        let pageNum = 1;
+        let isRendering = false;
+        let pageNumPending = null;
+        let liveWindow = null;
+        let overlayState = 'none'; // 'none', 'black', 'white'
+        let currentFileName = 'Live Presentation';
+
+        // DOM Elements
+        const dropZoneContainer = document.getElementById('drop-zone-container');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const presenterView = document.getElementById('presenter-view');
+        
+        const currentCanvas = document.getElementById('current-canvas');
+        const nextCanvas = document.getElementById('next-canvas');
+        const nextContainer = document.getElementById('next-page-container');
+        
+        const currentLabel = document.getElementById('current-page-label');
+        const nextLabel = document.getElementById('next-page-label');
+        
+        const pageSelect = document.getElementById('page-select');
+        const btnPresent = document.getElementById('btn-present');
+        const btnBlackout = document.getElementById('btn-blackout');
+        const btnBlank = document.getElementById('btn-blank');
+
+        // --- CLOCK LOGIC ---
+        let lastTimeStr = "";
+        
+        function updateClock() {
+            const now = new Date();
+            // Forces exactly 8 characters format (e.g. "09:05:02")
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            if (timeStr !== lastTimeStr) {
+                const wrapper = document.getElementById('clock-wrapper');
+                
+                if (wrapper.children.length === 0) {
+                    // Initial render: create a separate span for each character
+                    for(let char of timeStr) {
+                        let span = document.createElement('span');
+                        span.textContent = char;
+                        wrapper.appendChild(span);
+                    }
+                } else {
+                    // Update only the specific characters that changed to prevent static text from flickering
+                    for(let i = 0; i < timeStr.length; i++) {
+                        if (wrapper.children[i].textContent !== timeStr[i]) {
+                            const span = wrapper.children[i];
+                            span.style.animation = 'none';
+                            span.textContent = timeStr[i];
+                            
+                            // Trigger reflow to restart animation seamlessly
+                            void span.offsetWidth; 
+                            
+                            span.style.animation = 'digitFade 0.4s ease-out forwards';
+                        }
+                    }
+                }
+                lastTimeStr = timeStr;
+            }
+        }
+        setInterval(updateClock, 1000);
+        updateClock(); // Initial call
+
+        // --- 1. INITIALIZATION & FILE HANDLING ---
+
+        // Click to browse
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(file && file.type === "application/pdf") {
+                loadPDFFile(file);
+            }
+        });
+
+        // Drag & Drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if(file && file.type === "application/pdf") {
+                loadPDFFile(file);
+            } else {
+                alert("Please drop a valid PDF file.");
+            }
+        });
+
+        // Read file and parse with PDF.js
+        function loadPDFFile(file) {
+            currentFileName = file.name;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const typedarray = new Uint8Array(e.target.result);
+                
+                // Fade out transition for seamless state change
+                dropZoneContainer.style.transition = 'opacity 0.4s ease';
+                dropZoneContainer.style.opacity = '0';
+                
+                setTimeout(() => {
+                    // Switch UI State
+                    dropZoneContainer.style.display = 'none';
+                    presenterView.style.opacity = '0';
+                    presenterView.style.display = 'flex';
+                    
+                    // Force reflow
+                    void presenterView.offsetWidth;
+                    presenterView.style.transition = 'opacity 0.4s ease';
+                    presenterView.style.opacity = '1';
+                    
+                    pdfjsLib.getDocument(typedarray).promise.then(pdf => {
+                        pdfDoc = pdf;
+                        pageNum = 1;
+                        
+                        // Setup Dropdown
+                        pageSelect.innerHTML = '';
+                        for(let i = 1; i <= pdfDoc.numPages; i++) {
+                            const opt = document.createElement('option');
+                            opt.value = i;
+                            opt.textContent = `Page ${i}`;
+                            pageSelect.appendChild(opt);
+                        }
+                        
+                        // Initial Render
+                        queueRenderPage(pageNum);
+                    }).catch(err => {
+                        alert("Error loading PDF: " + err.message);
+                        resetUI();
+                    });
+                }, 400);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function resetUI() {
+            presenterView.style.transition = 'opacity 0.4s ease';
+            presenterView.style.opacity = '0';
+            setTimeout(() => {
+                presenterView.style.display = 'none';
+                dropZoneContainer.style.display = 'flex';
+                void dropZoneContainer.offsetWidth;
+                dropZoneContainer.style.opacity = '1';
+                pdfDoc = null;
+            }, 400);
+        }
+
+
+        // --- 2. RENDER LOGIC ---
+
+        function renderPageCanvas(num, canvasElement, isMain = false) {
+            // Snapshot current canvas for smooth crossfade transition
+            let clone = null;
+            if (canvasElement.width > 0 && canvasElement.height > 0) {
+                clone = document.createElement('canvas');
+                clone.width = canvasElement.width;
+                clone.height = canvasElement.height;
+                const cloneCtx = clone.getContext('2d');
+                cloneCtx.drawImage(canvasElement, 0, 0);
+                
+                clone.style.position = 'absolute';
+                clone.style.top = '0';
+                clone.style.left = '0';
+                clone.style.width = '100%';
+                clone.style.height = '100%';
+                clone.style.objectFit = 'contain';
+                clone.style.transition = 'opacity 0.5s ease';
+                clone.style.pointerEvents = 'none';
+                clone.style.zIndex = '5';
+                
+                canvasElement.parentElement.appendChild(clone);
+            }
+
+            return pdfDoc.getPage(num).then(page => {
+                // High-res render scale for crispness, CSS scales it down
+                const scale = 2.5; 
+                const viewport = page.getViewport({scale: scale});
+                
+                canvasElement.height = viewport.height;
+                canvasElement.width = viewport.width;
+                
+                const ctx = canvasElement.getContext('2d');
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                
+                return page.render(renderContext).promise.then(() => {
+                    // Fade out the snapshot after new render is complete
+                    if (clone) {
+                        requestAnimationFrame(() => {
+                            clone.style.opacity = '0';
+                            setTimeout(() => {
+                                if (clone.parentNode) clone.parentNode.removeChild(clone);
+                            }, 500);
+                        });
+                    }
+                });
+            });
+        }
+
+        function renderPage(num) {
+            isRendering = true;
+            
+            // Render Current Page
+            renderPageCanvas(num, currentCanvas, true).then(() => {
+                currentLabel.style.display = 'none'; // Hide text placeholder
+                syncLiveWindow(); // Update popup window
+                
+                // Render Next Page (if exists)
+                if (num < pdfDoc.numPages) {
+                    renderPageCanvas(num + 1, nextCanvas).then(() => {
+                        nextLabel.style.display = 'none';
+                        finishRender();
+                    });
+                } else {
+                    // Clear next page canvas if we are at the end
+                    const ctx = nextCanvas.getContext('2d');
+                    ctx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+                    nextLabel.textContent = "End of Document";
+                    nextLabel.style.display = 'block';
+                    finishRender();
+                }
+            });
+            
+            // Update dropdown
+            pageSelect.value = num;
+        }
+
+        function finishRender() {
+            isRendering = false;
+            if (pageNumPending !== null) {
+                renderPage(pageNumPending);
+                pageNumPending = null;
+            }
+        }
+
+        function queueRenderPage(num) {
+            if (isRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        function goNextPage() {
+            if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            queueRenderPage(pageNum);
+        }
+
+        function goPrevPage() {
+            if (!pdfDoc || pageNum <= 1) return;
+            pageNum--;
+            queueRenderPage(pageNum);
+        }
+
+        // --- 3. LIVE POPUP LOGIC ---
+
+        function openLiveWindow() {
+            if (liveWindow && !liveWindow.closed) {
+                liveWindow.focus();
+                return;
+            }
+            
+            // Open window with attributes to look as clean as possible
+            const features = 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no,resizable=yes';
+            liveWindow = window.open('', 'PlayDF_Live', features);
+            
+            if(!liveWindow) {
+                alert("Popup blocked! Please allow popups for this site to use the Presenter view.");
+                return;
+            }
+            
+            // Write popup HTML structure
+            liveWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${currentFileName}</title>
+                    <style>
+                        html, body { background: transparent; }
+                        body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; position: relative; }
+                        canvas { width: 100%; height: 100%; object-fit: contain; }
+                        #overlay { 
+                            position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
+                            opacity: 0; pointer-events: none; z-index: 10;
+                            transition: opacity 0.5s ease, background-color 0.5s ease;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <canvas id="live-canvas"></canvas>
+                    <div id="overlay"></div>
+                </body>
+                </html>
+            `);
+            liveWindow.document.close();
+            
+            // Set title safely in case of special characters
+            liveWindow.document.title = currentFileName;
+
+            // Attach event listeners to the popup window
+            liveWindow.document.addEventListener('click', goNextPage);
+            liveWindow.document.addEventListener('keydown', (e) => handleKeydown(e, true));
+            
+            // Small delay to ensure DOM in popup is ready before painting
+            setTimeout(() => {
+                syncLiveWindow();
+                applyOverlayState();
+            }, 100);
+        }
+
+        function syncLiveWindow() {
+            if (!liveWindow || liveWindow.closed) return;
+            
+            const liveCanvas = liveWindow.document.getElementById('live-canvas');
+            if (liveCanvas && currentCanvas.width > 0) {
+                // Snapshot live canvas for seamless transition
+                let clone = null;
+                if (liveCanvas.width > 0 && liveCanvas.height > 0) {
+                    clone = liveWindow.document.createElement('canvas');
+                    clone.width = liveCanvas.width;
+                    clone.height = liveCanvas.height;
+                    const cloneCtx = clone.getContext('2d');
+                    cloneCtx.drawImage(liveCanvas, 0, 0);
+                    
+                    clone.style.position = 'absolute';
+                    clone.style.top = '0';
+                    clone.style.left = '0';
+                    clone.style.width = '100%';
+                    clone.style.height = '100%';
+                    clone.style.objectFit = 'contain';
+                    clone.style.transition = 'opacity 0.5s ease';
+                    clone.style.pointerEvents = 'none';
+                    clone.style.zIndex = '5';
+                    
+                    liveCanvas.parentElement.appendChild(clone);
+                }
+
+                liveCanvas.width = currentCanvas.width;
+                liveCanvas.height = currentCanvas.height;
+                const ctx = liveCanvas.getContext('2d');
+                ctx.drawImage(currentCanvas, 0, 0);
+                
+                // Trigger fade out
+                if (clone) {
+                    // Force a browser reflow so the initial CSS state is registered before fading
+                    void clone.offsetWidth; 
+                    
+                    clone.style.opacity = '0';
+                    setTimeout(() => {
+                        if (clone.parentNode) clone.parentNode.removeChild(clone);
+                    }, 500);
+                }
+            }
+        }
+
+        function toggleOverlay(type) {
+            if (overlayState === type) {
+                overlayState = 'none'; // Toggle off
+            } else {
+                overlayState = type; // Set to black or white
+            }
+            
+            // Update button visual states
+            btnBlackout.classList.toggle('active', overlayState === 'black');
+            btnBlank.classList.toggle('active', overlayState === 'white');
+            
+            applyOverlayState();
+        }
+
+        function applyOverlayState() {
+            if (!liveWindow || liveWindow.closed) return;
+            const overlay = liveWindow.document.getElementById('overlay');
+            if (!overlay) return;
+            
+            if (overlayState === 'black') {
+                overlay.style.backgroundColor = '#000';
+                overlay.style.opacity = '1';
+                overlay.style.pointerEvents = 'auto';
+            } else if (overlayState === 'white') {
+                overlay.style.backgroundColor = '#fff';
+                overlay.style.opacity = '1';
+                overlay.style.pointerEvents = 'auto';
+            } else {
+                overlay.style.opacity = '0';
+                overlay.style.pointerEvents = 'none';
+            }
+        }
+
+        function toggleFullScreen() {
+            if (!liveWindow || liveWindow.closed) return;
+            const doc = liveWindow.document;
+            if (!doc.fullscreenElement) {
+                doc.documentElement.requestFullscreen().catch(err => {
+                    console.warn(`Error attempting to enable full-screen mode: ${err.message}`);
+                });
+            } else {
+                if (doc.exitFullscreen) {
+                    doc.exitFullscreen();
+                }
+            }
+        }
+
+        // --- 4. EVENT LISTENERS ---
+
+        // UI Clicks
+        nextContainer.addEventListener('click', goNextPage);
+        
+        pageSelect.addEventListener('change', (e) => {
+            pageNum = parseInt(e.target.value);
+            queueRenderPage(pageNum);
+            e.target.blur(); // Remove focus to re-enable keyboard shortcuts instantly
+        });
+
+        btnPresent.addEventListener('click', openLiveWindow);
+        btnBlackout.addEventListener('click', () => toggleOverlay('black'));
+        btnBlank.addEventListener('click', () => toggleOverlay('white'));
+
+        // Keyboard Shortcuts Handler
+        function handleKeydown(e, isPopup = false) {
+            // Ignore if in input/textarea (not applicable here, but good practice)
+            if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
+                 // only ignore if it's not the page select we want to use keys for, 
+                 // but safely we can let standard HTML behavior run for SELECT
+                 return; 
+            }
+            
+            // Only capture if PDF is loaded
+            if (!pdfDoc) return;
+
+            const k = e.key;
+            
+            // Next Page
+            if (['a', 'A', ' ', 'ArrowDown', 'ArrowRight'].includes(k)) {
+                e.preventDefault(); // prevent spacebar scrolling
+                goNextPage();
+            } 
+            // Prev Page
+            else if (['ArrowUp', 'ArrowLeft'].includes(k)) {
+                e.preventDefault();
+                goPrevPage();
+            }
+            // Present (Exclude on Popup)
+            else if (['q', 'Q', 'p', 'P'].includes(k) && !isPopup) {
+                e.preventDefault();
+                openLiveWindow();
+            }
+            // Blackout
+            else if (['z', 'Z'].includes(k)) {
+                e.preventDefault();
+                toggleOverlay('black');
+            }
+            // Blank
+            else if (['x', 'X'].includes(k)) {
+                e.preventDefault();
+                toggleOverlay('white');
+            }
+            // Fullscreen Popup
+            else if (['f', 'F'].includes(k)) {
+                e.preventDefault();
+                toggleFullScreen();
+            }
+            // Refresh and Reset
+            else if (['r', 'R'].includes(k)) {
+                e.preventDefault();
+                if (liveWindow && !liveWindow.closed) {
+                    liveWindow.close();
+                }
+                window.location.reload(); // Hard refresh back to initial state
+            }
+        }
+
+        // Apply to main window
+        document.addEventListener('keydown', (e) => handleKeydown(e, false));
+
+    </script>
+</body>
+</html>
