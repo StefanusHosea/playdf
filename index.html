@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!---
    
-   PlayDF • A dead simple PDF presenter.
+   PlayDon'tF*ck • A dead simple file presenter that doesn't f*cked you up.
    Initial: v09.07.2026
    Codecrafted by hello@stefanushosea.com
 
@@ -10,35 +10,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PlayDF</title>
-    <meta property="og:title" content="PlayDF"/>
-    <meta name='description' content="A dead simple PDF presenter • Codecrafted by stefanus@hosea.id">
-    <meta property="og:description" content="A dead simple PDF presenter • Codecrafted by stefanus@hosea.id">
+    <title>PlayDon'tF*ck</title>
+    <meta property="og:title" content="PlayDon'tF*ck"/>
+    <meta name='description' content="A dead simple file presenter that doesn't f*cked you up • Codecrafted by stefanus@hosea.id">
+    <meta property="og:description" content="A dead simple file presenter that doesn't f*cked you up • Codecrafted by stefanus@hosea.id">
     <meta property="og:type" content="website"/>
-    <meta property="og:url" content="https://playdf.hosea.id"/>
-    <meta property="og:image" content="https://playdf.hosea.id/share.jpg"/>
+    <meta property="og:url" content="https://play.hosea.id"/>
+    <meta property="og:image" content="https://play.hosea.id/share.jpg"/>
     <meta property="og:image:type" content="image/jpeg"/>
     <meta property="og:image:width" content="1200"/>
     <meta property="og:image:height" content="630"/>
     <meta name="author" content="Stefanus Hosea"/>
-    <meta name="keywords" content="PDF, presenter, presentation"/>
-    <meta property="og:type" content="website"/>
-    <meta property="og:site_name" content="PlayDF"/>
+    <meta name="keywords" content="PDF, image, video, file, presenter, presentation"/>
+    <meta property="og:site_name" content="PlayDon'tF*ck"/>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="PlayDF">
-    <meta name="application-name" content="PlayDF">
-    <link rel="apple-touch-icon" href="https://playdf.hosea.id/apple-touch-icon.png"/>
+    <meta name="apple-mobile-web-app-title" content="PlayDon'tF*ck">
+    <meta name="application-name" content="PlayDon'tF*ck">
+    <link rel="apple-touch-icon" href="https://play.hosea.id/apple-touch-icon.png"/>
     <meta name="theme-color" content="#242424"/>
     <meta name="msapplication-navbutton-color" content="#242424"/>
-    <meta name="apple-mobile-web-app-capable" content="yes"/>
-    <meta name="apple-mobile-web-app-status-bar-style" content="#242424"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
     <link rel="icon" href="favicon.ico" type="image/x-icon" />
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pptxviewjs@1.1.9/dist/PptxViewJS.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.0.0/jspdf.umd.min.js"></script>
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,6 +52,28 @@
             flex-direction: column;
             overflow: hidden;
             color: #242424;
+        }
+
+        /* --- GLOBAL DRAG OVERLAY --- */
+        #global-drop-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            backdrop-filter: blur(5px);
+        }
+        #global-drop-overlay div {
+            border: 4px dashed rgba(255,255,255,0.4);
+            border-radius: 20px;
+            padding: 60px 100px;
+            text-align: center;
+            font-size: 32px;
+            font-weight: 500;
+            pointer-events: none;
         }
 
         /* --- INITIAL STATE: Drop Zone --- */
@@ -85,28 +108,19 @@
             justify-content: center;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: inset 0 0px 100px rgba(255,255,255,0.75);
             animation: dropZoneFade 3s infinite ease-in-out;
         }
         
         #drop-zone:hover {
-            background-color: rgba(255,255,255,.075);
+            background-color: rgba(255,255,255,.15);
             border-color: rgba(0,0,0,.25);
-            transform: scale(1.01);
-            animation-play-state: paused; /* Pause fade on hover */
-            opacity: 1;
-        }
-
-        #drop-zone.dragover {
-            background-color: rgba(255,255,255,.1);
-            border-color: rgba(0,0,0,.25);
-            transform: scale(1.025);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
-            animation: none; /* Stop fade entirely when dragging */
+            animation-play-state: paused;
             opacity: 1;
         }
 
         h1, h2 {
-            background: linear-gradient(270deg, #aaa, #bbb, #aaa);
+            background: linear-gradient(270deg, #666, #888, #666);
             background-size: 200% 400%;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -114,6 +128,14 @@
             color: transparent;
             animation: textGradient 5s ease infinite;
             margin: 0;
+            text-align: center;
+            line-height: 1.1;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+
+        #drop-zone:hover h1, #drop-zone:hover h2 {
+            opacity: 0.75;
         }
 
         h1{
@@ -128,10 +150,10 @@
         /* --- PRESENTER VIEW --- */
         #presenter-view {
             flex-grow: 1;
-            display: none; /* Hidden initially */
+            display: none;
             padding: 40px;
             gap: 40px;
-            height: calc(100vh - 60px); /* Leave room for footer */
+            height: calc(100vh - 60px);
         }
         
         .col-left {
@@ -153,6 +175,16 @@
             flex-direction: column;
             justify-content: center;
             gap: 20px;
+        }
+
+        /* Main View Elements */
+        .main-media {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            position: absolute;
+            inset: 0;
+            display: none;
         }
 
         .preview-container {
@@ -191,11 +223,10 @@
             opacity: 1;
         }
 
-        /* Canvas styling to fit containers neatly */
-        canvas {
+        canvas.preview-canvas {
             width: 100%;
             height: 100%;
-            object-fit: contain; /* Keep aspect ratio intact without cropping */
+            object-fit: contain;
         }
 
         /* Labels over black boxes for initial render visual */
@@ -208,6 +239,130 @@
         }
         #next-page-label { font-size: 24px; }
 
+        /* --- PPTX PROGRESS --- */
+        #pptx-progress {
+            display: none;
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            padding: 0 15%;
+            pointer-events: none;
+        }
+        #pptx-progress-text {
+            color: rgba(255,255,255,0.85);
+            font-size: 15px;
+            font-weight: 400;
+            font-variant-numeric: tabular-nums;
+        }
+        #pptx-progress-track {
+            width: 100%;
+            max-width: 360px;
+            height: 6px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        #pptx-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #fff;
+            border-radius: 3px;
+            transition: width 0.2s ease;
+        }
+        #pptx-progress-track.indeterminate #pptx-progress-bar {
+            width: 35%;
+            transition: none;
+            animation: pptxIndet 1.1s infinite ease-in-out;
+        }
+        @keyframes pptxIndet {
+            0%   { margin-left: -35%; }
+            100% { margin-left: 100%; }
+        }
+        #pptx-note {
+            display: none;
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 30;
+            max-width: 80%;
+            padding: 8px 14px;
+            background: rgba(184, 134, 11, 0.95);
+            color: #fff;
+            font-size: 13px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+        }
+        
+        /* --- THUMBNAILS --- */
+        #thumbnails-container {
+            display: none;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            mask-image: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent 100%);
+            padding: 20px 0;
+            -ms-overflow-style: none; 
+            scrollbar-width: none; 
+        }
+        
+        #thumbnails-container::-webkit-scrollbar { 
+            display: none; 
+        }
+        
+        #thumbnails-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        
+        @media (max-width: 1200px) {
+            #thumbnails-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        .thumb-card {
+            background: #111;
+            border-radius: 6px;
+            aspect-ratio: 16/9;
+            cursor: pointer;
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: filter 0.2s, border-color 0.2s;
+            position: relative;
+        }
+        .thumb-card:hover {
+            filter: brightness(125%);
+        }
+        .thumb-card.active {
+            border-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        .thumb-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .thumb-number {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
         /* --- CONTROLS --- */
         .controls-row {
             display: flex;
@@ -216,6 +371,39 @@
             gap: 12px;
             background: transparent;
             padding: 10px 0;
+            transition: all 0.3s ease;
+        }
+
+        #video-controls-row {
+            display: none;
+            padding-bottom: 0;
+            gap: 8px;
+        }
+
+        /* Elevated Video Controls for Live Swap Mode */
+        body.live-swap-active #video-controls-row {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10001;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            border-radius: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        body.live-swap-active #video-controls-row.fade-out {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(-50%) translateY(20px);
+        }
+        body.live-swap-active #video-controls-row .btn-circle {
+            background: rgba(255,255,255,0.9);
+        }
+        body.live-swap-active #video-controls-row .btn-circle:hover {
+            background: #fff;
         }
 
         .btn-circle {
@@ -227,31 +415,51 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 15px;
-            background: #fff;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.1s, box-shadow 0.1s;
+            font-size: 18px;
+            background: #ddd;
+            transition: transform 0.1s, box-shadow 0.1s, background-color 0.2s, color 0.2s;
         }
-        .btn-circle:hover { transform: scale(1.05); }
-        .btn-circle:active { transform: scale(0.95); }
+        .btn-circle:not(#btn-blackout):not(#btn-blank){
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1), inset 0px 0px 20px #fff;
+        }
+        .btn-circle:hover { transform: scale(1.05); background: #eee; }
+        .btn-circle:active { transform: scale(0.95); background: #fff; }
         
-        #btn-present {
-            color: #aaa;
-            padding-left: 3px;
+        .btn-circle svg{
+            width: 20px;
+            height: 20px;
+            fill: #aaa;
+            stroke: #aaa;
+            transition: fill 0.2s, stroke 0.2s;
         }
+
+        .btn-circle.active {
+            background-color: #222;
+        }
+        .btn-circle.active svg {
+            fill: #fff;
+            stroke: #fff;
+        }
+
+        #btn-upload svg{
+            transform:rotate(180deg)
+        }
+
         #btn-blackout {
-            background: #222;
-            color: #222;
-            border: 2px solid rgba(0,0,0,.1);
+            background-image: linear-gradient(transparent, #000 75%);
+            background-color: #888;
+            border: 3px solid #000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        #btn-blackout.active { box-shadow: 0 0 0 4px #000; }
+        #btn-blackout.active { background-color: #000; }
         
         #btn-blank {
-            background: #fff;
-            color: #fff;
-            border: 2px solid rgba(0,0,0,.1);
+            background-image: linear-gradient(#fff, transparent 50%);
+            background-color: #eee;
+            border: 3px solid #eee;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        #btn-blank.active { box-shadow: 0 0 0 4px #fff; border-color: #eee; }
+        #btn-blank.active { background-color: #fff; border-color: #fff }
 
         /* --- LIVE VIEW (OBS/Receiver) --- */
         #live-view {
@@ -261,10 +469,13 @@
             background: transparent;
             z-index: 9999;
         }
-        #live-img {
+        .live-media {
             width: 100%;
             height: 100%;
             object-fit: contain;
+            position: absolute;
+            inset: 0;
+            display: none;
         }
         #live-overlay {
             position: absolute;
@@ -286,42 +497,17 @@
             color: rgba(0,0,0,.25);
             transition: color .5s ease;
         }
-
-        #clock-wrapper:hover{
-            color: rgba(0,0,0,.75);
-        }
-        
-        #clock-wrapper span {
-            display: inline-block;
-        }
+        #clock-wrapper:hover { color: rgba(0,0,0,.75); }
+        #clock-wrapper span { display: inline-block; }
 
         @keyframes digitFade {
             0% { opacity: 0.1; }
             100% { opacity: 1; }
         }
 
-        .page-selector {
-            padding: 8px 16px;
-            border-radius: 20px;
-            border: none;
-            font-family: inherit;
-            font-size: 14px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            outline: none;
-            cursor: pointer;
-            min-width: 100px;
-            text-align: center;
-            appearance: none;
-            background: #fff url('data:image/svg+xml;utf8,<svg width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="M1 3l4 4 4-4" stroke="black" fill="none" stroke-width="2" stroke-linecap="round"/></svg>') no-repeat right 12px center;
-            padding-right: 30px;
-        }
-
         /* --- FOOTER --- */
         footer {
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
+            margin: 0 0 1em auto;
             padding: 0 20px;
             font-size: 11px;
             color: #484848;
@@ -329,68 +515,111 @@
             opacity: .5;
             transition: opacity .5s ease;
         }
-        footer:hover{
-            opacity: 1;
-        }
-        footer a {
-            color: #242424;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color .5s ease;
-        }
-        footer a:hover {
-            color: #000;
-        }
+        footer:hover { opacity: 1; }
+        footer a { color: #242424; text-decoration: none; font-weight: 500; transition: color .5s ease; }
+        footer a:hover { color: #000; }
     </style>
 </head>
 <body>
 
+    <!-- GLOBAL DRAG & DROP OVERLAY -->
+    <div id="global-drop-overlay">
+        <div>Drop new file to present</div>
+    </div>
+
     <!-- STATE 1: Drop Zone -->
     <div id="drop-zone-container">
         <div id="drop-zone">
-            <h1>Drop a PDF File</h1>
+            <h1>Drop a file</h1>
             <h2>or click to browse</h2>
         </div>
-        <input type="file" id="file-input" style="display:none" accept="application/pdf">
+        <input type="file" id="file-input" style="display:none" accept="application/pdf, image/*, video/*, application/vnd.openxmlformats-officedocument.presentationml.presentation, .pptx">
     </div>
 
     <!-- STATE 2: Presenter View -->
     <div id="presenter-view">
         <div class="col-left">
             <span class="overlay-label" id="current-page-label">Page 1</span>
-            <canvas id="current-canvas"></canvas>
+
+            <!-- PPTX rasterization progress -->
+            <div id="pptx-progress">
+                <div id="pptx-progress-text">Rendering slides</div>
+                <div id="pptx-progress-track"><div id="pptx-progress-bar"></div></div>
+            </div>
+
+            <!-- PPTX unsupported-image note -->
+            <div id="pptx-note" onclick="this.style.display='none'"></div>
+            
+            <!-- Broadcaster Media Types -->
+            <canvas id="current-canvas" class="main-media" style="display: block;"></canvas>
+            <img id="current-img" class="main-media" />
+            <video id="current-video" class="main-media" playsinline muted></video>
         </div>
         
         <div class="col-right">
             <div id="clock-wrapper"></div>
+            
             <div class="preview-container" id="next-page-container">
                 <span class="overlay-label" id="next-page-label">Page 2</span>
-                <canvas id="next-canvas"></canvas>
+                <canvas id="next-canvas" class="preview-canvas"></canvas>
             </div>
             
+            <div id="thumbnails-container">
+                <div id="thumbnails-grid"></div>
+            </div>
+            
+            <div class="controls-row" id="video-controls-row">
+                <button class="btn-circle" id="btn-vid-play" title="Play/Pause" aria-label="Play/Pause">
+                    <svg aria-hidden="true" focusable="false" id="icon-play" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#000000" viewBox="0 0 256 256"><path d="M240,128a15.74,15.74,0,0,1-7.6,13.51L88.32,229.65a16,16,0,0,1-16.2.3A15.86,15.86,0,0,1,64,216.13V39.87a15.86,15.86,0,0,1,8.12-13.82,16,16,0,0,1,16.2.3L232.4,114.49A15.74,15.74,0,0,1,240,128Z"></path></svg>
+                    <svg aria-hidden="true" focusable="false" id="icon-pause" style="display:none;" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#000000" viewBox="0 0 256 256"><path d="M216,48V208a16,16,0,0,1-16,16H160a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h40A16,16,0,0,1,216,48ZM96,32H56A16,16,0,0,0,40,48V208a16,16,0,0,0,16,16H96a16,16,0,0,0,16-16V48A16,16,0,0,0,96,32Z"></path></svg>
+                </button>
+                <button class="btn-circle" id="btn-vid-restart" title="Restart" aria-label="Restart">
+                    <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#000000" viewBox="0 0 256 256"><path d="M256,128a15.76,15.76,0,0,1-7.33,13.34L160.48,197.5A15.91,15.91,0,0,1,136,184.16v-37.3L56.48,197.5A15.91,15.91,0,0,1,32,184.16V71.84A15.91,15.91,0,0,1,56.48,58.5L136,109.14V71.84A15.91,15.91,0,0,1,160.48,58.5l88.19,56.16A15.76,15.76,0,0,1,256,128Z"></path></svg>
+                </button>
+                <button class="btn-circle" id="btn-vid-loop" title="Repeat" aria-label="Repeat">
+                    <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#000000" viewBox="0 0 256 256"><path d="M24,128A72.08,72.08,0,0,1,96,56h96V40a8,8,0,0,1,13.66-5.66l24,24a8,8,0,0,1,0,11.32l-24,24A8,8,0,0,1,192,88V72H96a56.06,56.06,0,0,0-56,56,8,8,0,0,1-16,0Zm200-8a8,8,0,0,0-8,8,56.06,56.06,0,0,1-56,56H64V168a8,8,0,0,0-13.66-5.66l-24,24a8,8,0,0,0,0,11.32l24,24A8,8,0,0,0,64,216V200h96a72.08,72.08,0,0,0,72-72A8,8,0,0,0,224,120Z"></path></svg>
+                </button>
+                <button class="btn-circle" id="btn-vid-mute" title="Mute/Unmute" aria-label="Mute/Unmute">
+                    <svg aria-hidden="true" focusable="false" id="icon-unmute" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#000000" viewBox="0 0 256 256"><path d="M160,32.25V223.69a8.29,8.29,0,0,1-3.91,7.18,8,8,0,0,1-9-.56l-65.57-51A4,4,0,0,1,80,176.16V79.84a4,4,0,0,1,1.55-3.15l65.57-51a8,8,0,0,1,10,.16A8.27,8.27,0,0,1,160,32.25ZM60,80H32A16,16,0,0,0,16,96v64a16,16,0,0,0,16,16H60a4,4,0,0,0,4-4V84A4,4,0,0,0,60,80Zm126.77,20.84a8,8,0,0,0-.72,11.3,24,24,0,0,1,0,31.72,8,8,0,1,0,12,10.58,40,40,0,0,0,0-52.88A8,8,0,0,0,186.74,100.84Zm40.89-26.17a8,8,0,1,0-11.92,10.66,64,64,0,0,1,0,85.34,8,8,0,1,0,11.92,10.66,80,80,0,0,0,0-106.66Z"></path></svg>
+                    <svg aria-hidden="true" focusable="false" id="icon-mute" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#000000" viewBox="0 0 256 256"><path d="M213.92,210.62a8,8,0,1,1-11.84,10.76L160,175.09v48.6a8.29,8.29,0,0,1-3.91,7.18,8,8,0,0,1-9-.56l-65.55-51A4,4,0,0,1,80,176.18V87.09L42.08,45.38A8,8,0,1,1,53.92,34.62Zm-27.21-55.46a8,8,0,0,0,11.29-.7,40,40,0,0,0,0-52.88,8,8,0,1,0-12,10.57,24,24,0,0,1,0,31.72A8,8,0,0,0,186.71,155.16Zm40.92-80.49a8,8,0,1,0-11.92,10.66,64,64,0,0,1,0,85.34,8,8,0,1,0,11.92,10.66,80,80,0,0,0,0-106.66ZM153,119.87a4,4,0,0,0,7-2.7V32.25a8.27,8.27,0,0,0-2.88-6.4,8,8,0,0,0-10-.16L103.83,59.33a4,4,0,0,0-.5,5.85ZM60,80H32A16,16,0,0,0,16,96v64a16,16,0,0,0,16,16H60a4,4,0,0,0,4-4V84A4,4,0,0,0,60,80Z"></path></svg>
+                </button>
+            </div>
+
             <div class="controls-row">
-                <button class="btn-circle" id="btn-swap" title="Swap to Live (Shortcut: Q)">🕹️</button>
-                <button class="btn-circle" id="btn-present" title="Present (Shortcut: P)">▶</button>
-                <select class="page-selector" id="page-select" title="Go to Page"></select>
-                <button class="btn-circle" id="btn-blackout" title="Blackout (Shortcut: Z)"></button>
-                <button class="btn-circle" id="btn-blank" title="Blank (Shortcut: X)"></button>
+                <button class="btn-circle" id="btn-blackout" title="Blackout [Z]" aria-label="Blackout [Z]"></button>
+                <button class="btn-circle" id="btn-blank" title="Blank [X]" aria-label="Blank [X]"></button>
+                <button class="btn-circle" id="btn-swap" title="Swap to Live [1]" aria-label="Swap to Live [1]">
+                    <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#000000" viewBox="0 0 256 256"><path d="M224,104v96a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V104A16,16,0,0,1,48,88H208A16,16,0,0,1,224,104ZM56,72H200a8,8,0,0,0,0-16H56a8,8,0,0,0,0,16ZM72,40H184a8,8,0,0,0,0-16H72a8,8,0,0,0,0,16Z"></path></svg>
+                </button>
+                <button class="btn-circle" id="btn-present" title="Present [P]" aria-label="Present [P]">
+                    <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#000000" viewBox="0 0 256 256"><path d="M168,224a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,224ZM232,64V176a24,24,0,0,1-24,24H48a24,24,0,0,1-24-24V64A24,24,0,0,1,48,40H208A24,24,0,0,1,232,64Zm-74.34,42.34-24-24a8,8,0,0,0-11.32,0l-24,24a8,8,0,0,0,11.32,11.32L120,107.31V152a8,8,0,0,0,16,0V107.31l10.34,10.35a8,8,0,0,0,11.32-11.32Z"></path></svg>
+                </button>
+                <button class="btn-circle" id="btn-save" title="Save Converted PDF" aria-label="Save Converted PDF" style="display:none">
+                    <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#000000" viewBox="0 0 256 256"><path d="M208,32H83.31A15.86,15.86,0,0,0,72,36.69L36.69,72A15.86,15.86,0,0,0,32,83.31V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM128,184a32,32,0,1,1,32-32A32,32,0,0,1,128,184ZM172,80a4,4,0,0,1-4,4H88a4,4,0,0,1-4-4V48h88Z"></path></svg>
+                </button>
+                <button class="btn-circle" id="btn-upload" title="Open New File [O]" aria-label="Open New File [O]">
+                    <svg aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="#000000" viewBox="0 0 256 256"><path d="M237.66,117.66l-80,80A8,8,0,0,1,144,192V152.23c-57.1,3.24-96.25,40.27-107.24,52h0a12,12,0,0,1-20.68-9.58c3.71-32.26,21.38-63.29,49.76-87.37,23.57-20,52.22-32.69,78.16-34.91V32a8,8,0,0,1,13.66-5.66l80,80A8,8,0,0,1,237.66,117.66Z"></path></svg>
+                </button>
             </div>
         </div>
     </div>
 
     <footer>
-        Codecrafted by&nbsp;<a href="https://stefanus.hosea.id" target="_blank">Stefanus Hosea</a>&nbsp;• v2026.07.09.001
+        Codecrafted by <a href="https://stefanus.hosea.id" target="_blank">Stefanus Hosea</a> • v2026.07.10.1935
     </footer>
 
     <!-- STATE 3: Live View (OBS/Receiver) -->
     <div id="live-view">
-        <img id="live-img" />
+        <canvas id="live-canvas" class="live-media"></canvas>
+        <img id="live-img" class="live-media" />
+        <video id="live-video" class="live-media" playsinline></video>
         <div id="live-overlay"></div>
     </div>
 
-    <script>
+    <script type="module">
+        import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.1.200/build/pdf.mjs';
         // Set worker source for PDF.js
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.1.200/build/pdf.worker.mjs';
 
         // Check Mode (Broadcaster vs Receiver)
         const urlParams = new URLSearchParams(window.location.search);
@@ -398,32 +627,58 @@
         const bc = new BroadcastChannel('playdf_channel');
 
         // Core variables
+        let mediaMode = 'none'; // 'pdf', 'image', 'video'
+        let pageSource = null;  // 'pdf' or 'pptx' — which source feeds the paged pipeline
+        let slideImages = [];   // PPTX: pre-rasterized slide PNG data URLs
+        let convertedPdfBlob = null;  // PPTX->PDF result, for the Save button
+        let convertedPdfName = null;
         let pdfDoc = null;
         let pageNum = 1;
+        let totalPages = 0;
         let isRendering = false;
         let pageNumPending = null;
         let liveWindow = null;
-        let overlayState = 'none'; // 'none', 'black', 'white', 'green'
+        let overlayState = 'none'; // 'none', 'black', 'white'
         let currentFileName = 'Live Presentation';
+        let objectUrlTracker = null;
+        let currentFileObject = null;
+        let liveVideoMuted = false;
 
         // DOM Elements
         const dropZoneContainer = document.getElementById('drop-zone-container');
         const dropZone = document.getElementById('drop-zone');
+        const globalDropOverlay = document.getElementById('global-drop-overlay');
         const fileInput = document.getElementById('file-input');
         const presenterView = document.getElementById('presenter-view');
         
         const currentCanvas = document.getElementById('current-canvas');
+        const currentImg = document.getElementById('current-img');
+        const currentVideo = document.getElementById('current-video');
+        
         const nextCanvas = document.getElementById('next-canvas');
         const nextContainer = document.getElementById('next-page-container');
+        const thumbsContainer = document.getElementById('thumbnails-container');
+        const videoControlsRow = document.getElementById('video-controls-row');
         
         const currentLabel = document.getElementById('current-page-label');
         const nextLabel = document.getElementById('next-page-label');
         
-        const pageSelect = document.getElementById('page-select');
         const btnSwap = document.getElementById('btn-swap');
         const btnPresent = document.getElementById('btn-present');
         const btnBlackout = document.getElementById('btn-blackout');
         const btnBlank = document.getElementById('btn-blank');
+        const btnUpload = document.getElementById('btn-upload');
+        const btnSave = document.getElementById('btn-save');
+        
+        const btnVidPlay = document.getElementById('btn-vid-play');
+        const btnVidRestart = document.getElementById('btn-vid-restart');
+        const btnVidLoop = document.getElementById('btn-vid-loop');
+        const btnVidMute = document.getElementById('btn-vid-mute');
+        
+        const iconPlay = document.getElementById('icon-play');
+        const iconPause = document.getElementById('icon-pause');
+        const iconUnmute = document.getElementById('icon-unmute');
+        const iconMute = document.getElementById('icon-mute');
 
         if (isLiveMode) {
             // ==========================================
@@ -436,57 +691,83 @@
             document.getElementById('live-view').style.display = 'block';
 
             const liveImg = document.getElementById('live-img');
+            const liveCanvas = document.getElementById('live-canvas'); 
+            const liveVideo = document.getElementById('live-video');
             const liveOverlay = document.getElementById('live-overlay');
 
             bc.onmessage = (e) => {
                 const msg = e.data;
-                if (msg.type === 'render') {
-                    if (liveImg.src && liveImg.src !== window.location.href) {
-                        const clone = liveImg.cloneNode();
-                        clone.style.position = 'absolute';
-                        clone.style.top = '0';
-                        clone.style.left = '0';
-                        clone.style.zIndex = '5';
-                        clone.style.transition = 'opacity 0.5s ease';
-                        liveImg.parentElement.appendChild(clone);
-                        
-                        liveImg.src = msg.data;
-                        void clone.offsetWidth; // trigger reflow
-                        
-                        clone.style.opacity = '0';
-                        setTimeout(() => clone.remove(), 500);
-                    } else {
-                        liveImg.src = msg.data;
+                
+                if (msg.type === 'render_pdf') {
+                    liveVideo.pause(); liveVideo.style.display = 'none';
+                    liveImg.style.display = 'none';
+                    liveCanvas.style.display = 'block';
+                    
+                    const imgObj = new Image();
+                    imgObj.onload = () => {
+                        liveCanvas.width = imgObj.width; liveCanvas.height = imgObj.height;
+                        liveCanvas.getContext('2d').drawImage(imgObj, 0, 0);
+                    };
+                    imgObj.src = msg.data;
+                    if (msg.fileName) document.title = msg.fileName;
+                    
+                } else if (msg.type === 'render_image') {
+                    liveVideo.pause(); liveVideo.style.display = 'none';
+                    liveCanvas.style.display = 'none';
+                    liveImg.style.display = 'block';
+                    
+                    if (msg.file && liveImg.getAttribute('data-lastmodified') !== String(msg.file.lastModified)) {
+                        if (liveImg._blobUrl) URL.revokeObjectURL(liveImg._blobUrl);
+                        liveImg._blobUrl = URL.createObjectURL(msg.file);
+                        liveImg.src = liveImg._blobUrl;
+                        liveImg.setAttribute('data-lastmodified', msg.file.lastModified);
                     }
                     if (msg.fileName) document.title = msg.fileName;
-                } else if (msg.type === 'overlay') {
-                    if (msg.state === 'black') {
-                        liveOverlay.style.backgroundColor = '#000';
-                        liveOverlay.style.opacity = '1';
-                        liveOverlay.style.pointerEvents = 'auto';
-                    } else if (msg.state === 'white') {
-                        liveOverlay.style.backgroundColor = '#fff';
-                        liveOverlay.style.opacity = '1';
-                        liveOverlay.style.pointerEvents = 'auto';
-                    } else {
-                        liveOverlay.style.opacity = '0';
-                        liveOverlay.style.pointerEvents = 'none';
+                    
+                } else if (msg.type === 'render_video') {
+                    liveCanvas.style.display = 'none'; liveImg.style.display = 'none';
+                    liveVideo.style.display = 'block';
+                    
+                    if (msg.file && liveVideo.getAttribute('data-lastmodified') !== String(msg.file.lastModified)) { 
+                        if (liveVideo._blobUrl) URL.revokeObjectURL(liveVideo._blobUrl);
+                        liveVideo._blobUrl = URL.createObjectURL(msg.file);
+                        liveVideo.src = liveVideo._blobUrl; 
+                        liveVideo.setAttribute('data-lastmodified', msg.file.lastModified);
+                        liveVideo.load(); 
+                        if (msg.muted !== undefined) liveVideo.muted = msg.muted;
                     }
+                    if (msg.fileName) document.title = msg.fileName;
+                    
+                } 
+                
+                // Overlay & Video Commands
+                if (msg.type === 'overlay') {
+                    if (msg.state === 'black') {
+                        liveOverlay.style.backgroundColor = '#000'; liveOverlay.style.opacity = '1'; liveOverlay.style.pointerEvents = 'auto';
+                    } else if (msg.state === 'white') {
+                        liveOverlay.style.backgroundColor = '#fff'; liveOverlay.style.opacity = '1'; liveOverlay.style.pointerEvents = 'auto';
+                    } else {
+                        liveOverlay.style.opacity = '0'; liveOverlay.style.pointerEvents = 'none';
+                    }
+                } else if (msg.type === 'vid_play') {
+                    liveVideo.play().catch(()=>{});
+                } else if (msg.type === 'vid_pause') {
+                    liveVideo.pause();
+                } else if (msg.type === 'vid_seek') {
+                    liveVideo.currentTime = msg.time;
+                } else if (msg.type === 'vid_loop') {
+                    liveVideo.loop = msg.loop;
+                } else if (msg.type === 'vid_mute') {
+                    liveVideo.muted = msg.muted;
                 } else if (msg.type === 'command_close') {
                     window.close();
                 } else if (msg.type === 'command_fullscreen') {
-                    if (!document.fullscreenElement) {
-                        document.documentElement.requestFullscreen().catch(()=>{});
-                    } else {
-                        document.exitFullscreen().catch(()=>{});
-                    }
+                    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+                    else document.exitFullscreen().catch(()=>{});
                 }
             };
 
-            // Request state on initial load
             bc.postMessage({ type: 'request_state' });
-
-            // Forward interactions back to broadcaster
             document.addEventListener('click', () => bc.postMessage({ type: 'input_click' }));
             document.addEventListener('keydown', (e) => bc.postMessage({ type: 'input_keydown', key: e.key }));
 
@@ -494,23 +775,16 @@
             // ==========================================
             // BROADCASTER MODE (Main Program)
             // ==========================================
-
             let isLocalLiveMode = false;
+            let hideControlsTimeout = null;
 
-            // Handle incoming requests from Live windows
             bc.onmessage = (e) => {
                 const msg = e.data;
                 if (msg.type === 'request_state') {
-                    if (currentCanvas.width > 0) {
-                        bc.postMessage({ 
-                            type: 'render', 
-                            data: currentCanvas.toDataURL('image/png'),
-                            fileName: currentFileName
-                        });
-                    }
+                    syncLiveWindow();
                     bc.postMessage({ type: 'overlay', state: overlayState });
                 } else if (msg.type === 'input_click') {
-                    goNextPage();
+                    if (mediaMode === 'pdf') goNextPage();
                 } else if (msg.type === 'input_keydown') {
                     handleKeydown({ key: msg.key, preventDefault: () => {} }, true);
                 }
@@ -518,426 +792,676 @@
 
             // --- CLOCK LOGIC ---
             let lastTimeStr = "";
-            
             function updateClock() {
                 const now = new Date();
-                // Forces exactly 8 characters format (e.g. "09:05:02")
                 const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                
                 if (timeStr !== lastTimeStr) {
                     const wrapper = document.getElementById('clock-wrapper');
-                    
                     if (wrapper.children.length === 0) {
-                        // Initial render: create a separate span for each character
                         for(let char of timeStr) {
-                            let span = document.createElement('span');
-                            span.textContent = char;
-                            wrapper.appendChild(span);
+                            let span = document.createElement('span'); span.textContent = char; wrapper.appendChild(span);
                         }
                     } else {
-                        // Update only the specific characters that changed to prevent static text from flickering
                         for(let i = 0; i < timeStr.length; i++) {
                             if (wrapper.children[i].textContent !== timeStr[i]) {
                                 const span = wrapper.children[i];
-                                span.style.animation = 'none';
-                                span.textContent = timeStr[i];
-                                
-                                // Trigger reflow to restart animation seamlessly
-                                void span.offsetWidth; 
-                                
-                                span.style.animation = 'digitFade 0.4s ease-out forwards';
+                                span.style.animation = 'none'; span.textContent = timeStr[i];
+                                void span.offsetWidth; span.style.animation = 'digitFade 0.4s ease-out forwards';
                             }
                         }
                     }
                     lastTimeStr = timeStr;
                 }
             }
-            setInterval(updateClock, 1000);
-            updateClock(); // Initial call
+            setInterval(updateClock, 1000); updateClock(); 
 
-            // --- 1. INITIALIZATION & FILE HANDLING ---
+            // --- 1. GLOBAL DRAG & DROP & INITIALIZATION ---
+            let dragCounter = 0;
+            document.addEventListener('dragenter', (e) => {
+                e.preventDefault(); dragCounter++;
+                if (presenterView.style.display === 'flex' && !isLocalLiveMode) globalDropOverlay.style.display = 'flex';
+            });
+            document.addEventListener('dragleave', (e) => {
+                e.preventDefault(); dragCounter--;
+                if (dragCounter === 0) globalDropOverlay.style.display = 'none';
+            });
+            document.addEventListener('dragover', (e) => e.preventDefault());
+            document.addEventListener('drop', (e) => {
+                e.preventDefault(); dragCounter = 0; globalDropOverlay.style.display = 'none';
+                const file = e.dataTransfer.files[0];
+                if (file) loadSupportedFile(file);
+            });
 
-            // Click to browse
             dropZone.addEventListener('click', () => fileInput.click());
-
+            btnUpload.addEventListener('click', () => fileInput.click());
+            function saveConvertedPdf() {
+                if (!convertedPdfBlob) return;
+                const url = URL.createObjectURL(convertedPdfBlob);
+                const a = document.createElement('a');
+                a.href = url; a.download = convertedPdfName || 'presentation.pdf';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
+            btnSave.addEventListener('click', saveConvertedPdf);
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
-                if(file && file.type === "application/pdf") {
-                    loadPDFFile(file);
-                }
+                if(file) loadSupportedFile(file);
+                fileInput.value = ''; 
             });
 
-            // Drag & Drop
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('dragover');
-            });
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.classList.remove('dragover');
-            });
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('dragover');
-                const file = e.dataTransfer.files[0];
-                if(file && file.type === "application/pdf") {
-                    loadPDFFile(file);
-                } else {
-                    alert("Please drop a valid PDF file.");
-                }
-            });
+            function cleanupMedia() {
+                currentVideo.pause();
+                currentVideo.src = "";
+                currentImg.src = "";
+                if (objectUrlTracker) { URL.revokeObjectURL(objectUrlTracker); objectUrlTracker = null; }
+                pdfDoc = null;
+                pageSource = null;
+                slideImages = [];
+                convertedPdfBlob = null;
+                convertedPdfName = null;
+                if (typeof btnSave !== 'undefined' && btnSave) btnSave.style.display = 'none';
+                totalPages = 0;
+                pageNum = 1;
+                pageNumPending = null;
+                isRendering = false;
+                currentFileObject = null;
+                
+                currentCanvas.style.display = 'none';
+                currentImg.style.display = 'none';
+                currentVideo.style.display = 'none';
+                
+                nextContainer.style.display = 'none';
+                thumbsContainer.style.display = 'none';
+                videoControlsRow.style.display = 'none';
+                currentLabel.style.display = 'block';
+                currentLabel.textContent = "Loading...";
+                const pptxProg = document.getElementById('pptx-progress');
+                if (pptxProg) pptxProg.style.display = 'none';
+                const pptxNote = document.getElementById('pptx-note');
+                if (pptxNote) pptxNote.style.display = 'none';
+            }
 
-            // Read file and parse with PDF.js
-            function loadPDFFile(file) {
+            function loadSupportedFile(file) {
+                cleanupMedia();
                 currentFileName = file.name;
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const typedarray = new Uint8Array(e.target.result);
-                    
-                    // Fade out transition for seamless state change
+                currentFileObject = file;
+                const type = file.type;
+
+                if (dropZoneContainer.style.display !== 'none') {
                     dropZoneContainer.style.transition = 'opacity 0.4s ease';
                     dropZoneContainer.style.opacity = '0';
-                    
                     setTimeout(() => {
-                        // Switch UI State
                         dropZoneContainer.style.display = 'none';
                         presenterView.style.opacity = '0';
                         presenterView.style.display = 'flex';
-                        
-                        // Force reflow
                         void presenterView.offsetWidth;
                         presenterView.style.transition = 'opacity 0.4s ease';
                         presenterView.style.opacity = '1';
-                        
-                        pdfjsLib.getDocument(typedarray).promise.then(pdf => {
-                            pdfDoc = pdf;
-                            pageNum = 1;
-                            
-                            // Setup Dropdown
-                            pageSelect.innerHTML = '';
-                            for(let i = 1; i <= pdfDoc.numPages; i++) {
-                                const opt = document.createElement('option');
-                                opt.value = i;
-                                opt.textContent = `Page ${i}`;
-                                pageSelect.appendChild(opt);
-                            }
-                            
-                            // Initial Render
-                            queueRenderPage(pageNum);
-                        }).catch(err => {
-                            alert("Error loading PDF: " + err.message);
-                            resetUI();
-                        });
+                        routeFile(file, type);
                     }, 400);
-                };
-                reader.readAsArrayBuffer(file);
-            }
-
-            function resetUI() {
-                presenterView.style.transition = 'opacity 0.4s ease';
-                presenterView.style.opacity = '0';
-                setTimeout(() => {
-                    presenterView.style.display = 'none';
-                    dropZoneContainer.style.display = 'flex';
-                    void dropZoneContainer.offsetWidth;
-                    dropZoneContainer.style.opacity = '1';
-                    pdfDoc = null;
-                }, 400);
-            }
-
-
-            // --- 2. RENDER LOGIC ---
-
-            function renderPageCanvas(num, canvasElement, isMain = false) {
-                // Snapshot current canvas for smooth crossfade transition
-                let clone = null;
-                if (canvasElement.width > 0 && canvasElement.height > 0) {
-                    clone = document.createElement('canvas');
-                    clone.width = canvasElement.width;
-                    clone.height = canvasElement.height;
-                    const cloneCtx = clone.getContext('2d');
-                    cloneCtx.drawImage(canvasElement, 0, 0);
-                    
-                    clone.style.position = 'absolute';
-                    clone.style.top = '0';
-                    clone.style.left = '0';
-                    clone.style.width = '100%';
-                    clone.style.height = '100%';
-                    clone.style.objectFit = 'contain';
-                    clone.style.transition = 'opacity 0.5s ease';
-                    clone.style.pointerEvents = 'none';
-                    clone.style.zIndex = '5';
-                    
-                    canvasElement.parentElement.appendChild(clone);
+                } else {
+                    routeFile(file, type);
                 }
+            }
 
-                return pdfDoc.getPage(num).then(page => {
-                    // High-res render scale for crispness, CSS scales it down
-                    const scale = 2.5; 
-                    const viewport = page.getViewport({scale: scale});
+            function routeFile(file, type) {
+                if (type.startsWith('image/')) {
+                    mediaMode = 'image';
+                    objectUrlTracker = URL.createObjectURL(file);
+                    currentImg.src = objectUrlTracker;
+                    currentImg.style.display = 'block';
+                    currentLabel.style.display = 'none';
+                    syncLiveWindow();
+                } else if (type.startsWith('video/')) {
+                    mediaMode = 'video';
+                    objectUrlTracker = URL.createObjectURL(file);
+                    currentVideo.src = objectUrlTracker;
+                    currentVideo.style.display = 'block';
+                    currentLabel.style.display = 'none';
+                    videoControlsRow.style.display = 'flex';
                     
-                    canvasElement.height = viewport.height;
-                    canvasElement.width = viewport.width;
+                    // Sync initial video states
+                    currentVideo.loop = btnVidLoop.classList.contains('active');
                     
-                    const ctx = canvasElement.getContext('2d');
-                    const renderContext = {
-                        canvasContext: ctx,
-                        viewport: viewport
+                    // Force Broadcaster to always be muted to prevent local echoing
+                    currentVideo.muted = true; 
+                    
+                    // Default Live audience state to unmuted
+                    liveVideoMuted = false;
+                    iconUnmute.style.display = 'inline-block';
+                    iconMute.style.display = 'none';
+
+                    syncLiveWindow();
+                    currentVideo.play().catch(()=>{});
+                } else if (type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
+                    mediaMode = 'pdf';
+                    pageSource = 'pdf';
+                    const processBuffer = (arrayBuffer) => {
+                        pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise.then(pdf => {
+                            pdfDoc = pdf; totalPages = pdfDoc.numPages; initDocument();
+                        }).catch(err => { currentLabel.textContent = "Error loading PDF"; console.error("PDF load error:", err); });
                     };
                     
-                    return page.render(renderContext).promise.then(() => {
-                        // Fade out the snapshot after new render is complete
-                        if (clone) {
-                            requestAnimationFrame(() => {
-                                clone.style.opacity = '0';
-                                setTimeout(() => {
-                                    if (clone.parentNode) clone.parentNode.removeChild(clone);
-                                }, 500);
-                            });
+                    if (typeof file.arrayBuffer === 'function') file.arrayBuffer().then(processBuffer).catch(err => { currentLabel.textContent = "Error loading PDF"; console.error("PDF read error:", err); });
+                    else {
+                        const reader = new FileReader(); reader.onload = (e) => processBuffer(e.target.result); reader.onerror = () => { currentLabel.textContent = "Error loading PDF"; }; reader.readAsArrayBuffer(file);
+                    }
+                } else if (type === "application/vnd.openxmlformats-officedocument.presentationml.presentation" || file.name.toLowerCase().endsWith('.pptx')) {
+                    // PPTX is auto-converted to a real PDF (rasterize slides -> jsPDF), then
+                    // presented through the standard PDF pipeline. Save button offers the PDF.
+                    mediaMode = 'pdf';
+                    pageSource = 'pdf';
+                    convertPptxToPdf(file);
+                } else {
+                    currentLabel.textContent = "Unsupported File";
+                }
+            }
+
+            // Auto-convert a PPTX to a real PDF: rasterize each slide, assemble with jsPDF,
+            // then load the PDF through the standard pdf.js pipeline.
+            async function convertPptxToPdf(file) {
+                // Charts parse asynchronously inside pptxviewjs, so settle each slide before capture.
+                const CHART_SETTLE_MS = 220;
+                try {
+                    if (typeof window.PptxViewJS === 'undefined') {
+                        currentLabel.textContent = "PPTX library failed to load";
+                        return;
+                    }
+                    if (typeof window.jspdf === 'undefined') {
+                        currentLabel.textContent = "PDF library failed to load";
+                        return;
+                    }
+                    const offCanvas = document.createElement('canvas');
+                    offCanvas.width = 1920; offCanvas.height = 1080;
+                    const viewer = new PptxViewJS.PPTXViewer({ canvas: offCanvas, autoChartRerenderDelayMs: 0 });
+
+                    // loadFile parses the whole deck + preloads images (the slow part) — show an
+                    // indeterminate bar immediately so the wait is visible.
+                    showPptxPreparing('Reading PPTX…');
+                    await viewer.loadFile(file);
+                    const count = viewer.getSlideCount();
+                    if (!count || count < 1) { currentLabel.textContent = "No slides found"; hidePptxProgress(); return; }
+
+                    // Pre-scan the zip: which slides have charts (need settle) + count EMF/WMF images.
+                    const scan = await scanPptx(file);
+                    const settleAll = scan.hasChart.length !== count; // scan mismatch/failure -> settle everything
+
+                    showPptxProgress(0, count);
+                    const images = [];
+                    const tStart = performance.now();
+                    for (let i = 0; i < count; i++) {
+                        await viewer.render(offCanvas, { slideIndex: i, scale: 2, quality: 'high' });
+                        // Only chart slides need the async settle + redraw; skip it elsewhere to speed up big decks.
+                        if (settleAll || scan.hasChart[i]) {
+                            await new Promise(r => setTimeout(r, CHART_SETTLE_MS));
+                            await viewer.render(offCanvas, { slideIndex: i, scale: 2, quality: 'high' });
                         }
-                    });
+                        images.push(offCanvas.toDataURL('image/png'));
+
+                        const done = i + 1;
+                        // Estimate remaining from average per-slide time (needs >=2 samples to be stable).
+                        const eta = done >= 2 ? ((performance.now() - tStart) / done) * (count - done) / 1000 : 0;
+                        showPptxProgress(done, count, eta);
+                    }
+
+                    // Assemble the PDF, one slide image per page.
+                    const { jsPDF } = window.jspdf;
+                    const { w, h } = await imgSize(images[0]);
+                    const orientation = w >= h ? 'landscape' : 'portrait';
+                    const doc = new jsPDF({ orientation, unit: 'px', format: [w, h], compress: true });
+                    for (let i = 0; i < images.length; i++) {
+                        if (i > 0) doc.addPage([w, h], orientation);
+                        doc.addImage(images[i], 'PNG', 0, 0, w, h);
+                    }
+                    convertedPdfBlob = doc.output('blob');
+                    convertedPdfName = (file.name || 'presentation').replace(/\.pptx$/i, '') + '.pdf';
+                    const pdfBytes = doc.output('arraybuffer');
+
+                    hidePptxProgress();
+
+                    // Hand the generated PDF to the standard pipeline.
+                    currentFileName = convertedPdfName;
+                    pageSource = 'pdf';
+                    pdfjsLib.getDocument({ data: new Uint8Array(pdfBytes) }).promise.then(pdf => {
+                        pdfDoc = pdf; totalPages = pdfDoc.numPages;
+                        slideImages = []; // free rasterized frames; PDF drives rendering now
+                        showSaveButton(true);
+                        initDocument();
+                        if (scan.emfCount > 0) showPptxNote(scan.emfCount);
+                    }).catch(err => { currentLabel.textContent = "Error building PDF"; console.error("PDF build error:", err); });
+                } catch (err) {
+                    hidePptxProgress();
+                    currentLabel.textContent = "Error converting PPTX";
+                    console.error("PPTX convert error:", err);
+                }
+            }
+
+            // Decode a data URL to read its pixel dimensions.
+            function imgSize(dataUrl) {
+                return new Promise((resolve) => {
+                    const i = new Image();
+                    i.onload = () => resolve({ w: i.naturalWidth || 1920, h: i.naturalHeight || 1080 });
+                    i.onerror = () => resolve({ w: 1920, h: 1080 });
+                    i.src = dataUrl;
                 });
+            }
+
+            function showSaveButton(v) { if (btnSave) btnSave.style.display = v ? 'flex' : 'none'; }
+
+            // Pre-scan a PPTX zip for per-slide charts (presentation order) and EMF/WMF image count.
+            async function scanPptx(file) {
+                const result = { hasChart: [], emfCount: 0 };
+                try {
+                    if (typeof JSZip === 'undefined') return result;
+                    const zip = await JSZip.loadAsync(await file.arrayBuffer());
+
+                    // EMF/WMF images can't be decoded by pptxviewjs -> render blank.
+                    Object.keys(zip.files).forEach(n => { if (/ppt\/media\/.*\.(emf|wmf)$/i.test(n)) result.emfCount++; });
+
+                    const readStr = async (p) => { const f = zip.file(p); return f ? await f.async('string') : ''; };
+                    const presXml = await readStr('ppt/presentation.xml');
+                    const relsXml = await readStr('ppt/_rels/presentation.xml.rels');
+
+                    // Slide order = <p:sldId r:id="rId..."> order in presentation.xml.
+                    const rIds = [...presXml.matchAll(/<p:sldId[^>]*r:id="([^"]+)"/g)].map(m => m[1]);
+
+                    // Map rId -> target (handle either attribute order).
+                    const relMap = {};
+                    for (const m of relsXml.matchAll(/<Relationship\b[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"/g)) relMap[m[1]] = m[2];
+                    for (const m of relsXml.matchAll(/<Relationship\b[^>]*Target="([^"]+)"[^>]*Id="([^"]+)"/g)) { if (!relMap[m[2]]) relMap[m[2]] = m[1]; }
+
+                    for (const rId of rIds) {
+                        const target = relMap[rId];
+                        if (!target) { result.hasChart.push(true); continue; } // unknown -> settle to be safe
+                        let path = target.replace(/^\//, '').replace(/^\.\.\//, 'ppt/');
+                        if (!path.startsWith('ppt/')) path = 'ppt/' + path;
+                        const slideName = path.split('/').pop();
+                        const srXml = await readStr('ppt/slides/_rels/' + slideName + '.rels');
+                        result.hasChart.push(/Target="[^"]*charts\//i.test(srXml));
+                    }
+                } catch (_e) {
+                    return { hasChart: [], emfCount: result.emfCount }; // force settle-all on parse failure
+                }
+                return result;
+            }
+
+            // Non-blocking note when the deck contains images pptxviewjs can't render.
+            function showPptxNote(count) {
+                const note = document.getElementById('pptx-note');
+                if (!note) return;
+                note.textContent = count + (count === 1 ? ' image' : ' images') + " can't render (EMF/WMF) — check source";
+                note.style.display = 'block';
+                clearTimeout(note._t);
+                note._t = setTimeout(() => { note.style.display = 'none'; }, 7000);
+            }
+
+            // Indeterminate state shown during the slow parse/preload before slide counts are known.
+            function showPptxPreparing(msg) {
+                const wrap = document.getElementById('pptx-progress');
+                const bar = document.getElementById('pptx-progress-bar');
+                const txt = document.getElementById('pptx-progress-text');
+                const track = document.getElementById('pptx-progress-track');
+                if (!wrap) return;
+                wrap.style.display = 'flex';
+                if (track) track.classList.add('indeterminate');
+                if (bar) bar.style.width = '';            // let the CSS animation drive it
+                txt.textContent = msg || 'Preparing…';
+                currentLabel.style.display = 'none';
+            }
+
+            // Progress bar shown during PPTX rasterization.
+            function showPptxProgress(done, total, etaSec) {
+                const wrap = document.getElementById('pptx-progress');
+                const bar = document.getElementById('pptx-progress-bar');
+                const txt = document.getElementById('pptx-progress-text');
+                const track = document.getElementById('pptx-progress-track');
+                if (!wrap) return;
+                wrap.style.display = 'flex';
+                if (track) track.classList.remove('indeterminate');
+                const pct = total ? Math.round((done / total) * 100) : 0;
+                bar.style.width = pct + '%';
+                let line = 'Rendering slides ' + done + ' / ' + total;
+                const eta = fmtEta(etaSec);
+                if (eta) line += '  ·  ' + eta;
+                txt.textContent = line;
+                currentLabel.style.display = 'none';
+            }
+
+            function fmtEta(sec) {
+                if (typeof sec !== 'number' || !isFinite(sec) || sec <= 0) return '';
+                if (sec < 60) return '~' + Math.ceil(sec) + 's left';
+                const m = Math.floor(sec / 60), s = Math.ceil(sec % 60);
+                return '~' + m + 'm ' + s + 's left';
+            }
+
+            function hidePptxProgress() {
+                const wrap = document.getElementById('pptx-progress');
+                if (wrap) wrap.style.display = 'none';
+            }
+
+            // Draw a pre-rasterized PPTX slide onto a target canvas (matches PDF render signature).
+            function drawSlideImage(num, canvasElement) {
+                return new Promise((resolve) => {
+                    const src = slideImages[num - 1];
+                    if (!src) { resolve(); return; }
+                    const img = new Image();
+                    img.onload = () => {
+                        canvasElement.width = img.width;
+                        canvasElement.height = img.height;
+                        canvasElement.getContext('2d').drawImage(img, 0, 0);
+                        resolve();
+                    };
+                    img.onerror = () => resolve();
+                    img.src = src;
+                });
+            }
+
+            function initDocument() {
+                pageNum = 1;
+                currentCanvas.style.display = 'block';
+                nextContainer.style.display = 'flex';
+                buildThumbnails(); 
+                queueRenderPage(pageNum); 
+                renderThumbnailsBg(); 
+            }
+
+            // --- 2. RENDER LOGIC FOR PDF ---
+            function renderPageCanvas(num, canvasElement) {
+                if (pageSource === 'pptx') {
+                    return drawSlideImage(num, canvasElement);
+                }
+                if (pdfDoc) {
+                    return pdfDoc.getPage(num).then(page => {
+                        const scale = 2.5; const viewport = page.getViewport({scale: scale});
+                        canvasElement.height = viewport.height; canvasElement.width = viewport.width;
+                        const ctx = canvasElement.getContext('2d');
+                        return page.render({canvasContext: ctx, viewport: viewport}).promise;
+                    });
+                }
+                return Promise.resolve();
             }
 
             function renderPage(num) {
                 isRendering = true;
                 
-                // Render Current Page
-                renderPageCanvas(num, currentCanvas, true).then(() => {
-                    currentLabel.style.display = 'none'; // Hide text placeholder
-                    syncLiveWindow(); // Broadcast to live windows
+                renderPageCanvas(num, currentCanvas).then(() => {
+                    currentLabel.style.display = 'none'; 
+                    syncLiveWindow(); 
+                    updateActiveThumbnail(num);
                     
-                    // Render Next Page (if exists)
-                    if (num < pdfDoc.numPages) {
-                        renderPageCanvas(num + 1, nextCanvas).then(() => {
-                            nextLabel.style.display = 'none';
-                            finishRender();
-                        });
+                    if (num < totalPages) {
+                        nextLabel.style.display = 'none';
+                        renderPageCanvas(num + 1, nextCanvas).then(finishRender);
                     } else {
-                        // Clear next page canvas if we are at the end
-                        const ctx = nextCanvas.getContext('2d');
-                        ctx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-                        nextLabel.textContent = "End of Document";
-                        nextLabel.style.display = 'block';
+                        nextCanvas.getContext('2d').clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+                        nextLabel.textContent = "End of Document"; nextLabel.style.display = 'block';
                         finishRender();
                     }
                 });
-                
-                // Update dropdown
-                pageSelect.value = num;
             }
 
             function finishRender() {
                 isRendering = false;
-                if (pageNumPending !== null) {
-                    renderPage(pageNumPending);
-                    pageNumPending = null;
-                }
+                if (pageNumPending !== null) { renderPage(pageNumPending); pageNumPending = null; }
             }
 
             function queueRenderPage(num) {
-                if (isRendering) {
-                    pageNumPending = num;
-                } else {
-                    renderPage(num);
-                }
+                if (isRendering) pageNumPending = num;
+                else renderPage(num);
             }
 
             function goNextPage() {
-                if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
-                pageNum++;
-                queueRenderPage(pageNum);
+                if (mediaMode !== 'pdf' || totalPages === 0 || pageNum >= totalPages) return;
+                pageNum++; queueRenderPage(pageNum);
             }
 
             function goPrevPage() {
-                if (!pdfDoc || pageNum <= 1) return;
-                pageNum--;
-                queueRenderPage(pageNum);
+                if (mediaMode !== 'pdf' || totalPages === 0 || pageNum <= 1) return;
+                pageNum--; queueRenderPage(pageNum);
             }
 
-            // --- 3. LIVE POPUP & IPC LOGIC ---
+            // --- THUMBNAIL LOGIC ---
+            function buildThumbnails() {
+                const grid = document.getElementById('thumbnails-grid'); grid.innerHTML = '';
+                if (totalPages <= 2) { thumbsContainer.style.display = 'none'; return; }
+                thumbsContainer.style.display = 'block';
+                for(let i=1; i<=totalPages; i++) {
+                    const card = document.createElement('div');
+                    card.className = 'thumb-card'; card.id = 'thumb-card-' + i;
+                    card.onclick = () => { pageNum = i; queueRenderPage(pageNum); };
+                    const img = document.createElement('img'); img.id = 'thumb-img-' + i;
+                    const numBadge = document.createElement('div');
+                    numBadge.className = 'thumb-number'; numBadge.innerText = i;
+                    card.appendChild(img); card.appendChild(numBadge); grid.appendChild(card);
+                }
+            }
 
+            async function renderThumbnailsBg() {
+                if (totalPages <= 2) return;
+                if (pageSource === 'pptx') {
+                    for(let i=1; i<=totalPages; i++) {
+                        const img = document.getElementById('thumb-img-' + i);
+                        if (img && slideImages[i-1]) { img.src = slideImages[i-1]; img.style.opacity = '1'; }
+                    }
+                    return;
+                }
+                if (mediaMode !== 'pdf') return; 
+                for(let i=1; i<=totalPages; i++) {
+                    await new Promise(r => setTimeout(r, 60));
+                    if (!pdfDoc) break; 
+                    
+                    pdfDoc.getPage(i).then(page => {
+                        const viewport = page.getViewport({scale: 0.25});
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width; canvas.height = viewport.height;
+                        const ctx = canvas.getContext('2d');
+                        page.render({canvasContext: ctx, viewport: viewport}).promise.then(() => {
+                            const img = document.getElementById('thumb-img-' + i);
+                            if (img) { img.src = canvas.toDataURL(); img.style.opacity = '1'; }
+                        });
+                    });
+                }
+            }
+
+            function updateActiveThumbnail(num) {
+                if (totalPages <= 2) return;
+                document.querySelectorAll('.thumb-card').forEach(c => c.classList.remove('active'));
+                const activeCard = document.getElementById('thumb-card-' + num);
+                if (activeCard) {
+                    activeCard.classList.add('active');
+                    const offsetTop = activeCard.offsetTop - thumbsContainer.offsetTop;
+                    thumbsContainer.scrollTo({ top: offsetTop - 10, behavior: 'smooth' });
+                }
+            }
+
+            // --- 3. VIDEO SYNC CONTROLS ---
+            currentVideo.addEventListener('play', () => {
+                iconPlay.style.display = 'none'; iconPause.style.display = 'inline-block';
+                bc.postMessage({ type: 'vid_play' });
+                if(isLocalLiveMode) document.getElementById('live-video').play().catch(()=>{});
+            });
+            currentVideo.addEventListener('pause', () => {
+                iconPause.style.display = 'none'; iconPlay.style.display = 'inline-block';
+                bc.postMessage({ type: 'vid_pause' });
+                if(isLocalLiveMode) document.getElementById('live-video').pause();
+            });
+            currentVideo.addEventListener('seeked', () => {
+                bc.postMessage({ type: 'vid_seek', time: currentVideo.currentTime });
+                if(isLocalLiveMode) document.getElementById('live-video').currentTime = currentVideo.currentTime;
+            });
+
+            btnVidPlay.addEventListener('click', () => { if (currentVideo.paused) currentVideo.play(); else currentVideo.pause(); });
+            btnVidRestart.addEventListener('click', () => { currentVideo.currentTime = 0; currentVideo.play(); });
+            btnVidLoop.addEventListener('click', () => {
+                const isActive = btnVidLoop.classList.toggle('active');
+                currentVideo.loop = isActive; bc.postMessage({ type: 'vid_loop', loop: isActive });
+                if(isLocalLiveMode) document.getElementById('live-video').loop = isActive;
+            });
+            btnVidMute.addEventListener('click', () => {
+                liveVideoMuted = !liveVideoMuted;
+                if (liveVideoMuted) {
+                    iconUnmute.style.display = 'none'; iconMute.style.display = 'inline-block';
+                } else {
+                    iconUnmute.style.display = 'inline-block'; iconMute.style.display = 'none';
+                }
+                bc.postMessage({ type: 'vid_mute', muted: liveVideoMuted });
+                if(isLocalLiveMode) document.getElementById('live-video').muted = liveVideoMuted;
+            });
+
+            // --- 4. LIVE POPUP & IPC LOGIC ---
             function openLiveWindow() {
-                const targetUrl = window.location.origin + window.location.pathname + '?mode=live';
-                // standard window.open falls back gracefully to a synced broadcast window
+                // Strip existing queries/hashes and append ?mode=live safely
+                let targetUrl = window.location.href.split(/[?#]/)[0] + '?mode=live';
                 liveWindow = window.open(targetUrl, 'PlayDF_Live', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
             }
 
             function syncLiveWindow() {
-                if (currentCanvas.width > 0) {
-                    // Delay slightly to prevent blocking UI animations
-                    setTimeout(() => {
-                        const data = currentCanvas.toDataURL('image/png');
-                        bc.postMessage({ type: 'render', data: data, fileName: currentFileName });
-                        
-                        // Local swap sync
-                        if (isLocalLiveMode) {
-                            const liveImg = document.getElementById('live-img');
-                            if (liveImg.src && liveImg.src !== window.location.href) {
-                                const clone = liveImg.cloneNode();
-                                clone.style.position = 'absolute';
-                                clone.style.top = '0';
-                                clone.style.left = '0';
-                                clone.style.zIndex = '5';
-                                clone.style.transition = 'opacity 0.5s ease';
-                                liveImg.parentElement.appendChild(clone);
-                                
-                                liveImg.src = data;
-                                void clone.offsetWidth; // trigger reflow
-                                
-                                clone.style.opacity = '0';
-                                setTimeout(() => clone.remove(), 500);
-                            } else {
-                                liveImg.src = data;
-                            }
+                if (mediaMode === 'none') return;
+
+                // Post synchronously. Callers already invoke this after the source is ready
+                // (renderPage runs it post-render; a freshly opened popup pulls state via
+                // its own 'request_state' handshake), so no arbitrary delay is needed.
+                let payload = { fileName: currentFileName };
+
+                if (mediaMode === 'pdf') {
+                    payload.type = 'render_pdf'; payload.data = currentCanvas.toDataURL('image/png');
+                } else if (mediaMode === 'image') {
+                    payload.type = 'render_image'; payload.file = currentFileObject;
+                } else if (mediaMode === 'video') {
+                    payload.type = 'render_video'; payload.file = currentFileObject; payload.muted = liveVideoMuted;
+                }
+
+                bc.postMessage(payload);
+
+                // Local Live Mapping
+                if (isLocalLiveMode) {
+                    const lCanvas = document.getElementById('live-canvas'); const lImg = document.getElementById('live-img');
+                    const lVideo = document.getElementById('live-video');
+
+                    if (mediaMode === 'pdf') {
+                        lVideo.pause(); lVideo.style.display = 'none'; lImg.style.display = 'none';
+                        lCanvas.style.display = 'block';
+                        const imgObj = new Image(); imgObj.onload = () => { lCanvas.width = imgObj.width; lCanvas.height = imgObj.height; lCanvas.getContext('2d').drawImage(imgObj, 0, 0); };
+                        imgObj.src = payload.data;
+                    } else if (mediaMode === 'image') {
+                        lVideo.pause(); lVideo.style.display = 'none'; lCanvas.style.display = 'none';
+                        lImg.style.display = 'block'; lImg.src = objectUrlTracker;
+                    } else if (mediaMode === 'video') {
+                        lCanvas.style.display = 'none'; lImg.style.display = 'none';
+                        lVideo.style.display = 'block';
+                        if (lVideo.src !== objectUrlTracker) {
+                            lVideo.src = objectUrlTracker; lVideo.load(); 
+                            lVideo.loop = currentVideo.loop; 
+                            lVideo.muted = liveVideoMuted;
+                            lVideo.currentTime = currentVideo.currentTime;
+                            if (!currentVideo.paused) lVideo.play().catch(()=>{});
                         }
-                    }, 50);
+                    }
                 }
             }
 
             function toggleOverlay(type) {
-                if (overlayState === type) {
-                    overlayState = 'none'; // Toggle off
-                } else {
-                    overlayState = type; // Set to black or white
-                }
-                
-                // Update button visual states
-                btnBlackout.classList.toggle('active', overlayState === 'black');
-                btnBlank.classList.toggle('active', overlayState === 'white');
-                
+                if (overlayState === type) overlayState = 'none'; else overlayState = type; 
+                btnBlackout.classList.toggle('active', overlayState === 'black'); btnBlank.classList.toggle('active', overlayState === 'white');
                 applyOverlayState();
             }
 
             function applyOverlayState() {
                 bc.postMessage({ type: 'overlay', state: overlayState });
-                
-                // Local swap sync
                 const liveOverlay = document.getElementById('live-overlay');
                 if (overlayState === 'black') {
-                    liveOverlay.style.backgroundColor = '#000';
-                    liveOverlay.style.opacity = '1';
-                    liveOverlay.style.pointerEvents = 'auto';
+                    liveOverlay.style.backgroundColor = '#000'; liveOverlay.style.opacity = '1'; liveOverlay.style.pointerEvents = 'auto';
                 } else if (overlayState === 'white') {
-                    liveOverlay.style.backgroundColor = '#fff';
-                    liveOverlay.style.opacity = '1';
-                    liveOverlay.style.pointerEvents = 'auto';
+                    liveOverlay.style.backgroundColor = '#fff'; liveOverlay.style.opacity = '1'; liveOverlay.style.pointerEvents = 'auto';
                 } else {
-                    liveOverlay.style.opacity = '0';
-                    liveOverlay.style.pointerEvents = 'none';
+                    liveOverlay.style.opacity = '0'; liveOverlay.style.pointerEvents = 'none';
                 }
             }
 
-            function toggleFullScreen() {
-                // Force OBS / Popup into full screen via broadcast
-                bc.postMessage({ type: 'command_fullscreen' });
-            }
-
+            function toggleFullScreen() { bc.postMessage({ type: 'command_fullscreen' }); }
+            
             function toggleLocalLive() {
                 isLocalLiveMode = !isLocalLiveMode;
                 const liveView = document.getElementById('live-view');
+                document.body.classList.toggle('live-swap-active', isLocalLiveMode);
                 
                 if (isLocalLiveMode) {
-                    liveView.style.background = '#000'; // Make background solid black to hide presenter interface
-                    liveView.style.display = 'block';
-                    
-                    // Force an immediate sync of current image and overlay
-                    const localLiveImg = document.getElementById('live-img');
-                    localLiveImg.src = currentCanvas.toDataURL('image/png');
-                    applyOverlayState();
-                    
-                    if (!document.fullscreenElement) {
-                        document.documentElement.requestFullscreen().catch(()=>{});
-                    }
+                    liveView.style.background = '#000'; liveView.style.display = 'block';
+                    syncLiveWindow(); applyOverlayState();
+                    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+                    if (mediaMode === 'video') resetHideControlsTimer();
                 } else {
                     liveView.style.display = 'none';
-                    if (document.fullscreenElement) {
-                        document.exitFullscreen().catch(()=>{});
+                    videoControlsRow.classList.remove('fade-out');
+                    clearTimeout(hideControlsTimeout);
+                    if (mediaMode === 'video' && !currentVideo.paused) {
+                        currentVideo.pause();
+                        document.getElementById('live-video').pause();
                     }
+                    if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
                 }
             }
 
-            // --- 4. EVENT LISTENERS ---
-
-            // UI Clicks
-            nextContainer.addEventListener('click', goNextPage);
+            // --- 5. GLOBAL KEYBOARD & CLICK HANDLERS ---
             
-            pageSelect.addEventListener('change', (e) => {
-                pageNum = parseInt(e.target.value);
-                queueRenderPage(pageNum);
-                e.target.blur(); // Remove focus to re-enable keyboard shortcuts instantly
+            function resetHideControlsTimer() {
+                if (!isLocalLiveMode || mediaMode !== 'video') return;
+                videoControlsRow.classList.remove('fade-out');
+                clearTimeout(hideControlsTimeout);
+                hideControlsTimeout = setTimeout(() => {
+                    if (isLocalLiveMode && mediaMode === 'video') {
+                        videoControlsRow.classList.add('fade-out');
+                    }
+                }, 5000);
+            }
+
+            document.addEventListener('mousemove', resetHideControlsTimer);
+            videoControlsRow.addEventListener('mouseenter', () => clearTimeout(hideControlsTimeout));
+            videoControlsRow.addEventListener('mouseleave', resetHideControlsTimer);
+            
+            // Advance PDF via clicks on Live Swap canvas
+            const liveViewEl = document.getElementById('live-view');
+            liveViewEl.addEventListener('click', (e) => {
+                // Ensure we do not advance the page if interacting with the floating video controls
+                if (e.target.closest('#video-controls-row')) return;
+                
+                if (isLocalLiveMode && mediaMode === 'pdf') {
+                    goNextPage();
+                }
             });
 
+            nextContainer.addEventListener('click', goNextPage);
             btnSwap.addEventListener('click', toggleLocalLive);
             btnPresent.addEventListener('click', openLiveWindow);
             btnBlackout.addEventListener('click', () => toggleOverlay('black'));
             btnBlank.addEventListener('click', () => toggleOverlay('white'));
 
-            // Keyboard Shortcuts Handler
             function handleKeydown(e, isPopup = false) {
-                // Ignore if in input/textarea (not applicable here, but good practice)
-                if(e && e.target && e.target.tagName) {
-                    if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-                }
-                
-                // Only capture if PDF is loaded
-                if (!pdfDoc) return;
-
+                if(e && e.target && e.target.tagName) { if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return; }
+                if (mediaMode === 'none') return;
                 const k = e.key;
                 
-                // Next Page
                 if (['a', 'A', ' ', 'ArrowDown', 'ArrowRight'].includes(k)) {
-                    if (e.preventDefault) e.preventDefault();
-                    goNextPage();
+                    if (mediaMode === 'pdf') { if (e.preventDefault) e.preventDefault(); goNextPage(); }
+                    else if (mediaMode === 'video' && k === ' ') { if (e.preventDefault) e.preventDefault(); if (currentVideo.paused) currentVideo.play(); else currentVideo.pause(); }
                 } 
-                // Prev Page
                 else if (['ArrowUp', 'ArrowLeft'].includes(k)) {
-                    if (e.preventDefault) e.preventDefault();
-                    goPrevPage();
+                    if (mediaMode === 'pdf') { if (e.preventDefault) e.preventDefault(); goPrevPage(); }
                 }
-                // Present (Exclude on Popup)
-                else if (['p', 'P'].includes(k) && !isPopup) {
-                    if (e.preventDefault) e.preventDefault();
-                    openLiveWindow();
-                }
-                // Blackout
-                else if (['z', 'Z'].includes(k)) {
-                    if (e.preventDefault) e.preventDefault();
-                    toggleOverlay('black');
-                }
-                // Blank
-                else if (['x', 'X'].includes(k)) {
-                    if (e.preventDefault) e.preventDefault();
-                    toggleOverlay('white');
-                }
-                // Swap to local Live
-                else if (['q', 'Q'].includes(k)) {
-                    if (e.preventDefault) e.preventDefault();
-                    toggleLocalLive();
-                }
-                // Fullscreen Popup
-                else if (['f', 'F'].includes(k)) {
-                    if (e.preventDefault) e.preventDefault();
-                    toggleFullScreen();
-                }
-                // Refresh and Reset
+                else if (['p', 'P'].includes(k) && !isPopup) { if (e.preventDefault) e.preventDefault(); openLiveWindow(); }
+                else if (['z', 'Z'].includes(k)) { if (e.preventDefault) e.preventDefault(); toggleOverlay('black'); }
+                else if (['x', 'X'].includes(k)) { if (e.preventDefault) e.preventDefault(); toggleOverlay('white'); }
+                else if (['o', 'O'].includes(k)) { if (e.preventDefault) e.preventDefault(); fileInput.click(); }
+                else if (['s', 'S'].includes(k)) { if (convertedPdfBlob) { if (e.preventDefault) e.preventDefault(); saveConvertedPdf(); } }
+                else if (['1'].includes(k)) { if (e.preventDefault) e.preventDefault(); toggleLocalLive(); }
+                else if (['f', 'F'].includes(k)) { if (e.preventDefault) e.preventDefault(); toggleFullScreen(); }
                 else if (['r', 'R'].includes(k)) {
-                    if (e.preventDefault) e.preventDefault();
-                    bc.postMessage({ type: 'command_close' });
-                    window.location.reload(); 
+                    if (e.preventDefault) e.preventDefault(); bc.postMessage({ type: 'command_close' }); window.location.reload(); 
                 }
             }
-
-            // Apply to main window
             document.addEventListener('keydown', (e) => handleKeydown(e, false));
-            
-            // Listen for native exit from full screen
-            document.addEventListener('fullscreenchange', () => {
-                if (!document.fullscreenElement && isLocalLiveMode) {
-                    toggleLocalLive();
-                }
-            });
-        
-        } // End of ELSE (Broadcaster block)
+            document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && isLocalLiveMode) toggleLocalLive(); });
+        }
     </script>
 </body>
 </html>
