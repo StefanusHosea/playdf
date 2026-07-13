@@ -496,6 +496,7 @@
             font-size: 25px;
             color: rgba(0,0,0,.25);
             transition: color .5s ease;
+            cursor: pointer;
         }
         #clock-wrapper:hover { color: rgba(0,0,0,.75); }
         #clock-wrapper span { display: inline-block; }
@@ -815,6 +816,11 @@
                 }
             }
             setInterval(updateClock, 1000); updateClock(); 
+
+            // Click handler for clock-wrapper
+            document.getElementById('clock-wrapper').addEventListener('click', () => {
+                window.open('https://tinner.hosea.id', '_blank');
+            });
 
             // --- 1. GLOBAL DRAG & DROP & INITIALIZATION ---
             let dragCounter = 0;
