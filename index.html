@@ -79,6 +79,134 @@
             pointer-events: none;
         }
 
+        /* --- DISPLAY OPTIONS MODAL --- */
+        #display-options-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 20000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        #display-options-modal.active {
+            display: flex;
+            opacity: 1;
+        }
+        .modal-card {
+            background: rgba(255, 255, 255, .85);
+            color: #242424;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 480px;
+            padding: 28px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), inset 0px 0px 100px #fff;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+        #display-options-modal.active .modal-card {
+            transform: scale(1);
+        }
+        .modal-title {
+            font-size: 22px;
+            font-weight: 500;
+            margin-bottom: 16px;
+            color: #1f1f1f;
+        }
+        .modal-section-title {
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: #1f1f1f;
+        }
+        .screen-options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 240px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .screen-radio-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background-color: rgba(255,255,255,.35);
+            box-shadow: inset 0 0px 25px #fff;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+        .screen-radio-option:hover {
+            background-color: rgba(255,255,255,.75);
+        }
+        .screen-radio-option input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #242424;
+            cursor: pointer;
+        }
+        .screen-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex-grow: 1;
+        }
+        .screen-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #1f1f1f;
+        }
+        .screen-desc {
+            font-size: 11px;
+            color: #666666;
+        }
+        .modal-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 28px;
+        }
+        .btn-modal-cancel {
+            background: transparent;
+            border: none;
+            color: #242424;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px 18px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        .btn-modal-cancel:hover {
+            background-color: #eee;
+        }
+        .btn-modal-start {
+            background-color: #444;
+            border: none;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px 24px;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: inset 0 0px 10px rgba(255,255,255,0.75);
+            transition: background-color 0.15s ease, transform 0.1s ease;
+        }
+        .btn-modal-start:hover {
+            background-color: #000;
+        }
+        .btn-modal-start:active {
+            transform: scale(0.98);
+        }
+
         /* --- INITIAL STATE: Drop Zone --- */
         #drop-zone-container {
             flex-grow: 1;
@@ -533,6 +661,22 @@
         <div>Drop new file to present</div>
     </div>
 
+    <!-- DISPLAY OPTIONS MODAL -->
+    <div id="display-options-modal">
+        <div class="modal-card">
+            <div class="modal-title">Presentation display options</div>
+
+            <div class="screen-options-container" id="display-screen-options">
+                <!-- Dynamically populated via getScreenDetails() or fallback -->
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-modal-cancel" id="btn-modal-cancel">Cancel</button>
+                <button class="btn-modal-start" id="btn-modal-start">Present</button>
+            </div>
+        </div>
+    </div>
+
     <!-- STATE 1: Drop Zone -->
     <div id="drop-zone-container">
         <div id="drop-zone">
@@ -611,7 +755,7 @@
     </div>
 
     <footer>
-        Codecrafted by <a href="https://stefanus.hosea.id" target="_blank">Stefanus Hosea</a> • v2026.07.13.2111
+        Codecrafted by <a href="https://stefanus.hosea.id" target="_blank">Stefanus Hosea</a> • v2026.08.05.2359
     </footer>
 
     <!-- STATE 3: Live View (OBS/Receiver) -->
@@ -650,6 +794,10 @@
         let currentFileObject = null;
         let liveVideoMuted = false;
 
+        // Screen Details & Modal Variables
+        let detectedScreens = [];
+        let screenDetailsObj = null;
+
         // DOM Elements
         const dropZoneContainer = document.getElementById('drop-zone-container');
         const dropZone = document.getElementById('drop-zone');
@@ -685,6 +833,12 @@
         const iconPause = document.getElementById('icon-pause');
         const iconUnmute = document.getElementById('icon-unmute');
         const iconMute = document.getElementById('icon-mute');
+
+        // Modal Elements
+        const displayModal = document.getElementById('display-options-modal');
+        const screenOptionsContainer = document.getElementById('display-screen-options');
+        const btnModalCancel = document.getElementById('btn-modal-cancel');
+        const btnModalStart = document.getElementById('btn-modal-start');
 
         if (isLiveMode) {
             // ==========================================
@@ -767,15 +921,37 @@
                     liveVideo.muted = msg.muted;
                 } else if (msg.type === 'command_close') {
                     window.close();
-                } else if (msg.type === 'command_fullscreen') {
+                } else if (msg.type === 'command_fullscreen' || msg.type === 'command_fullscreen_force') {
                     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
-                    else document.exitFullscreen().catch(()=>{});
+                    else if (msg.type === 'command_fullscreen') document.exitFullscreen().catch(()=>{});
                 }
             };
 
             bc.postMessage({ type: 'request_state' });
-            document.addEventListener('click', () => bc.postMessage({ type: 'input_click' }));
+            
+            document.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(()=>{});
+                }
+                bc.postMessage({ type: 'input_click' });
+            });
+
             document.addEventListener('keydown', (e) => bc.postMessage({ type: 'input_keydown', key: e.key }));
+
+            // Debounced scroll listener for Receiver Mode presentation display
+            let lastReceiverScrollTime = 0;
+            document.addEventListener('wheel', (e) => {
+                const now = Date.now();
+                if (now - lastReceiverScrollTime < 350) return;
+                if (Math.abs(e.deltaY) < 10) return;
+                lastReceiverScrollTime = now;
+                
+                if (e.deltaY > 0) {
+                    bc.postMessage({ type: 'input_scroll_next' });
+                } else if (e.deltaY < 0) {
+                    bc.postMessage({ type: 'input_scroll_prev' });
+                }
+            }, { passive: true });
 
         } else {
             // ==========================================
@@ -789,12 +965,117 @@
                 if (msg.type === 'request_state') {
                     syncLiveWindow();
                     bc.postMessage({ type: 'overlay', state: overlayState });
-                } else if (msg.type === 'input_click') {
+                } else if (msg.type === 'input_click' || msg.type === 'input_scroll_next') {
                     if (mediaMode === 'pdf') goNextPage();
+                } else if (msg.type === 'input_scroll_prev') {
+                    if (mediaMode === 'pdf') goPrevPage();
                 } else if (msg.type === 'input_keydown') {
                     handleKeydown({ key: msg.key, preventDefault: () => {} }, true);
                 }
             };
+
+            // --- DISPLAY OPTIONS MODAL LOGIC ---
+            async function openDisplayModal() {
+                displayModal.classList.add('active');
+                await detectScreens();
+            }
+
+            function closeDisplayModal() {
+                displayModal.classList.remove('active');
+            }
+
+            async function detectScreens() {
+                screenOptionsContainer.innerHTML = '<div style="font-size:12px; color:#888;">Detecting displays...</div>';
+                detectedScreens = [];
+
+                if ('getScreenDetails' in window) {
+                    try {
+                        screenDetailsObj = await window.getScreenDetails();
+                        detectedScreens = screenDetailsObj.screens || [];
+                        renderScreenOptions(detectedScreens, screenDetailsObj.currentScreen);
+                        screenDetailsObj.onscreenschange = () => {
+                            renderScreenOptions(screenDetailsObj.screens, screenDetailsObj.currentScreen);
+                        };
+                        return;
+                    } catch (e) {
+                        console.warn("getScreenDetails permission or API error:", e);
+                    }
+                }
+
+                // Fallback display options
+                renderFallbackScreens();
+            }
+
+            function renderScreenOptions(screens, currentScreen) {
+                screenOptionsContainer.innerHTML = '';
+                if (!screens || screens.length === 0) {
+                    renderFallbackScreens();
+                    return;
+                }
+
+                screens.forEach((sc, index) => {
+                    const isCurrent = sc === currentScreen || (sc.isPrimary && !currentScreen);
+                    const label = sc.label || (sc.isInternal ? 'Built-in Retina Display' : `Display ${index + 1}`);
+                    
+                    let otherScreenLabel = 'primary display';
+                    const otherScreen = screens.find(s => s !== sc);
+                    if (otherScreen) {
+                        otherScreenLabel = otherScreen.label || (otherScreen.isInternal ? 'Built-in Retina Display' : 'main display');
+                    }
+
+                    const optionLabel = document.createElement('label');
+                    optionLabel.className = 'screen-radio-option';
+                    
+                    const descText = isCurrent 
+                        ? `Presentation view will open on this display` 
+                        : `Presentation view will open on ${label}`;
+
+                    // Auto-select secondary screen if available
+                    const shouldCheck = screens.length > 1 ? !isCurrent : index === 0;
+
+                    optionLabel.innerHTML = `
+                        <input type="radio" name="screen_selection" value="${index}" ${shouldCheck ? 'checked' : ''} />
+                        <div class="screen-info">
+                            <span class="screen-name">${label} ${isCurrent ? '(current)' : ''}</span>
+                            <span class="screen-desc">${descText}</span>
+                        </div>
+                    `;
+                    screenOptionsContainer.appendChild(optionLabel);
+                });
+            }
+
+            function renderFallbackScreens() {
+                screenOptionsContainer.innerHTML = `
+                    <label class="screen-radio-option">
+                        <input type="radio" name="screen_selection" value="0" checked />
+                        <div class="screen-info">
+                            <span class="screen-name">Default / Current Display</span>
+                            <span class="screen-desc">Audience view window will open on current desktop</span>
+                        </div>
+                    </label>
+                    <label class="screen-radio-option">
+                        <input type="radio" name="screen_selection" value="1" />
+                        <div class="screen-info">
+                            <span class="screen-name">Secondary Display (e.g. Monitor/Projector)</span>
+                            <span class="screen-desc">Audience view will open on secondary display</span>
+                        </div>
+                    </label>
+                `;
+            }
+
+            function startSlideshowFromModal() {
+                const selectedRadio = document.querySelector('input[name="screen_selection"]:checked');
+                const selectedIndex = selectedRadio ? parseInt(selectedRadio.value) : 0;
+
+                closeDisplayModal();
+                openLiveWindowOnScreen(selectedIndex, true);
+            }
+
+            btnModalCancel.addEventListener('click', closeDisplayModal);
+            btnModalStart.addEventListener('click', startSlideshowFromModal);
+            displayModal.addEventListener('click', (e) => {
+                if (e.target === displayModal) closeDisplayModal();
+            });
 
             // --- CLOCK LOGIC ---
             let lastTimeStr = "";
@@ -958,8 +1239,6 @@
                         const reader = new FileReader(); reader.onload = (e) => processBuffer(e.target.result); reader.onerror = () => { currentLabel.textContent = "Error loading PDF"; }; reader.readAsArrayBuffer(file);
                     }
                 } else if (type === "application/vnd.openxmlformats-officedocument.presentationml.presentation" || file.name.toLowerCase().endsWith('.pptx')) {
-                    // PPTX is auto-converted to a real PDF (rasterize slides -> jsPDF), then
-                    // presented through the standard PDF pipeline. Save button offers the PDF.
                     mediaMode = 'pdf';
                     pageSource = 'pdf';
                     convertPptxToPdf(file);
@@ -968,10 +1247,7 @@
                 }
             }
 
-            // Auto-convert a PPTX to a real PDF: rasterize each slide, assemble with jsPDF,
-            // then load the PDF through the standard pdf.js pipeline.
             async function convertPptxToPdf(file) {
-                // Charts parse asynchronously inside pptxviewjs, so settle each slide before capture.
                 const CHART_SETTLE_MS = 220;
                 try {
                     if (typeof window.PptxViewJS === 'undefined') {
@@ -986,23 +1262,19 @@
                     offCanvas.width = 1920; offCanvas.height = 1080;
                     const viewer = new PptxViewJS.PPTXViewer({ canvas: offCanvas, autoChartRerenderDelayMs: 0 });
 
-                    // loadFile parses the whole deck + preloads images (the slow part) — show an
-                    // indeterminate bar immediately so the wait is visible.
                     showPptxPreparing('Reading PPTX…');
                     await viewer.loadFile(file);
                     const count = viewer.getSlideCount();
                     if (!count || count < 1) { currentLabel.textContent = "No slides found"; hidePptxProgress(); return; }
 
-                    // Pre-scan the zip: which slides have charts (need settle) + count EMF/WMF images.
                     const scan = await scanPptx(file);
-                    const settleAll = scan.hasChart.length !== count; // scan mismatch/failure -> settle everything
+                    const settleAll = scan.hasChart.length !== count;
 
                     showPptxProgress(0, count);
                     const images = [];
                     const tStart = performance.now();
                     for (let i = 0; i < count; i++) {
                         await viewer.render(offCanvas, { slideIndex: i, scale: 2, quality: 'high' });
-                        // Only chart slides need the async settle + redraw; skip it elsewhere to speed up big decks.
                         if (settleAll || scan.hasChart[i]) {
                             await new Promise(r => setTimeout(r, CHART_SETTLE_MS));
                             await viewer.render(offCanvas, { slideIndex: i, scale: 2, quality: 'high' });
@@ -1010,12 +1282,10 @@
                         images.push(offCanvas.toDataURL('image/png'));
 
                         const done = i + 1;
-                        // Estimate remaining from average per-slide time (needs >=2 samples to be stable).
                         const eta = done >= 2 ? ((performance.now() - tStart) / done) * (count - done) / 1000 : 0;
                         showPptxProgress(done, count, eta);
                     }
 
-                    // Assemble the PDF, one slide image per page.
                     const { jsPDF } = window.jspdf;
                     const { w, h } = await imgSize(images[0]);
                     const orientation = w >= h ? 'landscape' : 'portrait';
@@ -1030,12 +1300,11 @@
 
                     hidePptxProgress();
 
-                    // Hand the generated PDF to the standard pipeline.
                     currentFileName = convertedPdfName;
                     pageSource = 'pdf';
                     pdfjsLib.getDocument({ data: new Uint8Array(pdfBytes) }).promise.then(pdf => {
                         pdfDoc = pdf; totalPages = pdfDoc.numPages;
-                        slideImages = []; // free rasterized frames; PDF drives rendering now
+                        slideImages = []; 
                         showSaveButton(true);
                         initDocument();
                         if (scan.emfCount > 0) showPptxNote(scan.emfCount);
@@ -1047,7 +1316,6 @@
                 }
             }
 
-            // Decode a data URL to read its pixel dimensions.
             function imgSize(dataUrl) {
                 return new Promise((resolve) => {
                     const i = new Image();
@@ -1059,31 +1327,27 @@
 
             function showSaveButton(v) { if (btnSave) btnSave.style.display = v ? 'flex' : 'none'; }
 
-            // Pre-scan a PPTX zip for per-slide charts (presentation order) and EMF/WMF image count.
             async function scanPptx(file) {
                 const result = { hasChart: [], emfCount: 0 };
                 try {
                     if (typeof JSZip === 'undefined') return result;
                     const zip = await JSZip.loadAsync(await file.arrayBuffer());
 
-                    // EMF/WMF images can't be decoded by pptxviewjs -> render blank.
                     Object.keys(zip.files).forEach(n => { if (/ppt\/media\/.*\.(emf|wmf)$/i.test(n)) result.emfCount++; });
 
                     const readStr = async (p) => { const f = zip.file(p); return f ? await f.async('string') : ''; };
                     const presXml = await readStr('ppt/presentation.xml');
                     const relsXml = await readStr('ppt/_rels/presentation.xml.rels');
 
-                    // Slide order = <p:sldId r:id="rId..."> order in presentation.xml.
                     const rIds = [...presXml.matchAll(/<p:sldId[^>]*r:id="([^"]+)"/g)].map(m => m[1]);
 
-                    // Map rId -> target (handle either attribute order).
                     const relMap = {};
                     for (const m of relsXml.matchAll(/<Relationship\b[^>]*Id="([^"]+)"[^>]*Target="([^"]+)"/g)) relMap[m[1]] = m[2];
                     for (const m of relsXml.matchAll(/<Relationship\b[^>]*Target="([^"]+)"[^>]*Id="([^"]+)"/g)) { if (!relMap[m[2]]) relMap[m[2]] = m[1]; }
 
                     for (const rId of rIds) {
                         const target = relMap[rId];
-                        if (!target) { result.hasChart.push(true); continue; } // unknown -> settle to be safe
+                        if (!target) { result.hasChart.push(true); continue; } 
                         let path = target.replace(/^\//, '').replace(/^\.\.\//, 'ppt/');
                         if (!path.startsWith('ppt/')) path = 'ppt/' + path;
                         const slideName = path.split('/').pop();
@@ -1091,12 +1355,11 @@
                         result.hasChart.push(/Target="[^"]*charts\//i.test(srXml));
                     }
                 } catch (_e) {
-                    return { hasChart: [], emfCount: result.emfCount }; // force settle-all on parse failure
+                    return { hasChart: [], emfCount: result.emfCount }; 
                 }
                 return result;
             }
 
-            // Non-blocking note when the deck contains images pptxviewjs can't render.
             function showPptxNote(count) {
                 const note = document.getElementById('pptx-note');
                 if (!note) return;
@@ -1106,7 +1369,6 @@
                 note._t = setTimeout(() => { note.style.display = 'none'; }, 7000);
             }
 
-            // Indeterminate state shown during the slow parse/preload before slide counts are known.
             function showPptxPreparing(msg) {
                 const wrap = document.getElementById('pptx-progress');
                 const bar = document.getElementById('pptx-progress-bar');
@@ -1115,12 +1377,11 @@
                 if (!wrap) return;
                 wrap.style.display = 'flex';
                 if (track) track.classList.add('indeterminate');
-                if (bar) bar.style.width = '';            // let the CSS animation drive it
+                if (bar) bar.style.width = '';            
                 txt.textContent = msg || 'Preparing…';
                 currentLabel.style.display = 'none';
             }
 
-            // Progress bar shown during PPTX rasterization.
             function showPptxProgress(done, total, etaSec) {
                 const wrap = document.getElementById('pptx-progress');
                 const bar = document.getElementById('pptx-progress-bar');
@@ -1150,7 +1411,6 @@
                 if (wrap) wrap.style.display = 'none';
             }
 
-            // Draw a pre-rasterized PPTX slide onto a target canvas (matches PDF render signature).
             function drawSlideImage(num, canvasElement) {
                 return new Promise((resolve) => {
                     const src = slideImages[num - 1];
@@ -1320,18 +1580,36 @@
             });
 
             // --- 4. LIVE POPUP & IPC LOGIC ---
-            function openLiveWindow() {
-                // Strip existing queries/hashes and append ?mode=live safely
+            function openLiveWindowOnScreen(screenIndex = 0, isFullscreen = true) {
                 let targetUrl = window.location.href.split(/[?#]/)[0] + '?mode=live';
-                liveWindow = window.open(targetUrl, 'PlayDF_Live', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no,resizable=yes');
+                let features = 'menubar=no,toolbar=no,location=no,status=no,resizable=yes';
+
+                if (detectedScreens && detectedScreens[screenIndex]) {
+                    const sc = detectedScreens[screenIndex];
+                    const left = sc.availLeft ?? sc.left ?? 0;
+                    const top = sc.availTop ?? sc.top ?? 0;
+                    const width = sc.availWidth ?? sc.width ?? 1280;
+                    const height = sc.availHeight ?? sc.height ?? 720;
+                    features += `,left=${left},top=${top},width=${width},height=${height}`;
+                } else {
+                    features += ',width=1280,height=720';
+                }
+
+                liveWindow = window.open(targetUrl, 'PlayDF_Live', features);
+
+                if (isFullscreen) {
+                    setTimeout(() => {
+                        bc.postMessage({ type: 'command_fullscreen_force' });
+                    }, 400);
+                    setTimeout(() => {
+                        bc.postMessage({ type: 'command_fullscreen_force' });
+                    }, 1000);
+                }
             }
 
             function syncLiveWindow() {
                 if (mediaMode === 'none') return;
 
-                // Post synchronously. Callers already invoke this after the source is ready
-                // (renderPage runs it post-render; a freshly opened popup pulls state via
-                // its own 'request_state' handshake), so no arbitrary delay is needed.
                 let payload = { fileName: currentFileName };
 
                 if (mediaMode === 'pdf') {
@@ -1413,7 +1691,7 @@
                 }
             }
 
-            // --- 5. GLOBAL KEYBOARD & CLICK HANDLERS ---
+            // --- 5. GLOBAL KEYBOARD & CLICK & SCROLL HANDLERS ---
             
             function resetHideControlsTimer() {
                 if (!isLocalLiveMode || mediaMode !== 'video') return;
@@ -1433,7 +1711,6 @@
             // Advance PDF via clicks on Live Swap canvas
             const liveViewEl = document.getElementById('live-view');
             liveViewEl.addEventListener('click', (e) => {
-                // Ensure we do not advance the page if interacting with the floating video controls
                 if (e.target.closest('#video-controls-row')) return;
                 
                 if (isLocalLiveMode && mediaMode === 'pdf') {
@@ -1441,14 +1718,43 @@
                 }
             });
 
+            // Debounced scroll listener for Local Live Swap presentation display
+            let lastLocalScrollTime = 0;
+            document.addEventListener('wheel', (e) => {
+                if (!isLocalLiveMode || mediaMode !== 'pdf') return;
+                const now = Date.now();
+                if (now - lastLocalScrollTime < 350) return;
+                if (Math.abs(e.deltaY) < 10) return;
+                lastLocalScrollTime = now;
+                
+                if (e.deltaY > 0) {
+                    goNextPage();
+                } else if (e.deltaY < 0) {
+                    goPrevPage();
+                }
+            }, { passive: true });
+
             nextContainer.addEventListener('click', goNextPage);
             btnSwap.addEventListener('click', toggleLocalLive);
-            btnPresent.addEventListener('click', openLiveWindow);
+            btnPresent.addEventListener('click', openDisplayModal);
             btnBlackout.addEventListener('click', () => toggleOverlay('black'));
             btnBlank.addEventListener('click', () => toggleOverlay('white'));
 
             function handleKeydown(e, isPopup = false) {
                 if(e && e.target && e.target.tagName) { if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return; }
+                
+                // Modal navigation via keyboard
+                if (displayModal.classList.contains('active')) {
+                    if (e.key === 'Escape') {
+                        if (e.preventDefault) e.preventDefault();
+                        closeDisplayModal();
+                    } else if (e.key === 'Enter') {
+                        if (e.preventDefault) e.preventDefault();
+                        startSlideshowFromModal();
+                    }
+                    return;
+                }
+
                 if (mediaMode === 'none') return;
                 const k = e.key;
                 
@@ -1459,7 +1765,7 @@
                 else if (['ArrowUp', 'ArrowLeft'].includes(k)) {
                     if (mediaMode === 'pdf') { if (e.preventDefault) e.preventDefault(); goPrevPage(); }
                 }
-                else if (['p', 'P'].includes(k) && !isPopup) { if (e.preventDefault) e.preventDefault(); openLiveWindow(); }
+                else if (['p', 'P'].includes(k) && !isPopup) { if (e.preventDefault) e.preventDefault(); openDisplayModal(); }
                 else if (['z', 'Z'].includes(k)) { if (e.preventDefault) e.preventDefault(); toggleOverlay('black'); }
                 else if (['x', 'X'].includes(k)) { if (e.preventDefault) e.preventDefault(); toggleOverlay('white'); }
                 else if (['o', 'O'].includes(k)) { if (e.preventDefault) e.preventDefault(); fileInput.click(); }
