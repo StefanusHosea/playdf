@@ -27,12 +27,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="PlayDon'tF*ck">
     <meta name="application-name" content="PlayDon'tF*ck">
-    <link rel="apple-touch-icon" href="https://play.hosea.id/apple-touch-icon.png"/>
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png"/>
     <meta name="theme-color" content="#242424"/>
     <meta name="msapplication-navbutton-color" content="#242424"/>
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
     <link rel="icon" href="favicon.ico" type="image/x-icon" />
-    <link rel="manifest" href="https://play.hosea.id/site.webmanifest" >
+    <link rel="manifest" href="./site.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
@@ -1552,6 +1552,15 @@
             }
             document.addEventListener('keydown', (e) => handleKeydown(e, false));
             document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && isLocalLiveMode) toggleLocalLive(); });
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch((error) => {
+                    console.error('Service worker registration failed:', error);
+                });
+            });
         }
     </script>
 </body>
